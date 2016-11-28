@@ -1,0 +1,89 @@
+desc "Start new framework release version on your git repository"
+desc "This lane require **git flow** installed in your framework directory check documentation [here](https://github.com/nvie/gitflow)"
+desc "You will automatically be switched to release/X.X.X branch after this lane and your project/podsec version will be updated"
+desc "####Example using specific version:"
+desc "```\nfastlane start_framework_release version:4.0.9\n```"
+desc "####Options"
+desc " * **version**: The target version number X.X.X"
+desc "  * **environment_variable**: DG_FRAMEWORK_RELEASE_VERSION"
+desc "  * **type**: string"
+desc "  * **optional**: true, **automatically patch** release version to the next number (1.0.0 --> 1.0.1)"
+desc "* **project**: The project path."
+desc "  * **environment_variable**: DG_PROJECT"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "* **podspec_path**: The podspec path if specific."
+desc "  * **environment_variable**: DG_PODSPEC_PATH"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc ""
+lane :start_framework_release do |options|
+  release_version = options[:version] != nil ? options[:version] : ENV['DG_FRAMEWORK_RELEASE_VERSION']
+  podspec_path = options[:podspec_path] != nil ? options[:podspec_path] : ENV['DG_PODSPEC_PATH']
+  project = options[:project] != nil ? options[:project] : ENV['DG_PROJECT']
+  ensure_git_status_clean()
+  if release_version == nil
+    version_number = get_version_number(xcodeproj: project)
+    version_number_arr = version_number.split(".")
+    if version_number_arr.length >= 2
+      minor_version = version_number_arr[2].to_i
+      minor_version = minor_version + 1
+      version_number_arr[2] = minor_version.to_s
+      release_version = version_number_arr.join(".")
+    else
+      UI.user_error! "The project version is invalid '#{version_number}'"
+    end
+  end
+  Actions.sh("git flow release start #{release_version}")
+  increment_version_number(
+    xcodeproj: project,
+    version_number: release_version
+  )
+  version_bump_podspec(
+    path: podspec_path,
+    version_number: release_version
+  )
+  git_commit(
+    path: ["."],
+    message: "Bumped release version #{release_version}"
+  )
+  Actions.sh("git flow release publish #{release_version}")
+  UI.success "Release #{release_version} created"
+end
+
+desc "Submit the framework release version on your git repository and close the branch"
+desc "This lane require **git flow** installed in your framework directory check documentation [here](https://github.com/nvie/gitflow)"
+desc "You will automatically be switched to develop branch after this lane"
+desc "####How to install ?"
+desc "This lane require the `tests` lane define in [Digipolitan/fastlane-ios-common](https://github.com/Digipolitan/fastlane-ios-common)"
+desc "```\nimport_from_git(\n  url: 'https://github.com/Digipolitan/fastlane-ios-common'\n)\n```"
+desc "####Options"
+desc " * **message**: The commit message"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "  * **default_value**: Release version **VERSION**"
+desc " * **workspace**: The workspace to use."
+desc "  * **environment_variable**: DG_WORKSPACE"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "* **project**: The project path."
+desc "  * **environment_variable**: DG_PROJECT"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "* **scheme**: The scheme into the workspace to execute."
+desc "  * **environment_variable**: DG_SCHEME"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc ""
+lane :submit_framework_release do |options|
+  tests(
+    workspace:options[:workspace],
+    project: options[:project],
+    scheme: options[:scheme],
+    skip_slack:true)
+  ensure_git_status_clean()
+  release_version = get_version_number()
+  message = options[:message] ? options[:message] : "Release version #{release_version}"
+  Actions.sh("git flow release finish #{release_version} -p -m '#{message}'")
+  UI.success "Successfully submitted framework v#{release_version} to your repository"
+end
