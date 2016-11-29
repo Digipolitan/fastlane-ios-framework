@@ -125,7 +125,7 @@ desc "```\nmachine trunk.cocoapods.org\n  login user@example.com\n  password XXX
 desc "The password `XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX` is your CocoaPods trunk token"
 desc ""
 lane :framework_deploy_cocoapods do
-  if git_branch() == "master"
+  if git_branch() != "master"
     UI.user_error! "Run this lane only on a master branch"
   end
   podspec = read_podspec(
@@ -159,7 +159,7 @@ desc "  * **type**: boolean"
 desc "  * **optional**: true"
 desc "  * **default_value**: false"
 lane :framework_deploy_github do |options|
-  if git_branch() == "master"
+  if git_branch() != "master"
     UI.user_error! "Run this lane only on a master branch"
   end
   github_token = options[:token] != nil ? options[:token] : ENV['DG_GITHUB_TOKEN']
@@ -190,4 +190,5 @@ lane :framework_deploy_github do |options|
     commitish: "master",
     upload_assets: github_assets
   )
+  Actions.sh("bash <(curl -s https://codecov.io/bash)")
 end
