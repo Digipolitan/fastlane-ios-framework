@@ -124,18 +124,20 @@ desc "The output sould be something like this :"
 desc "```\nmachine trunk.cocoapods.org\n  login user@example.com\n  password XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n```"
 desc "The password `XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX` is your CocoaPods trunk token"
 desc ""
-lane :framework_deploy_cocoapods do
+lane :framework_deploy_cocoapods do |options|
   if git_branch() != "master"
     UI.user_error! "Run this lane only on a master branch"
   end
+  podspec_path = options[:podspec_path] ? options[:podspec_path] : ENV['DG_PODSPEC_PATH']
   podspec = read_podspec(
-    path: params[:podspec_path] ? params[:podspec_path] : ENV['DG_PODSPEC_PATH']
+    path: podspec_path
   )
-  pod_name = podspec["name"]
   pod_push(
+    path: podspec_path
     allow_warnings: true,
     verbose: true
   )
+  pod_name = podspec["name"]
   lane_context[:DG_COCOAPODS_RELEASE_LINK] = "https://cocoapods.org/pods/#{pod_name}"
 end
 
