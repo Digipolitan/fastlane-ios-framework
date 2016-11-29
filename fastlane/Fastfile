@@ -4,8 +4,13 @@ desc "You will automatically be switched to release/X.X.X branch after this lane
 desc "####Example using specific version:"
 desc "```\nfastlane start_framework_release version:4.0.9\n```"
 desc "####Options"
-desc " * **version**: The target version number X.X.X"
-desc "  * **environment_variable**: DG_FRAMEWORK_RELEASE_VERSION"
+desc "* **bump_type**: The type of this version bump. Available: patch, minor, major"
+desc "  * **environment_variable**: DG_BUMP_TYPE"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "  * **default_value**: patch"
+desc "* **version**: Change to a specific version. This will replace the bump type value"
+desc "  * **environment_variable**: DG_RELEASE_VERSION"
 desc "  * **type**: string"
 desc "  * **optional**: true, **automatically patch** release version to the next number (1.0.0 --> 1.0.1)"
 desc "* **project**: The project path."
@@ -18,17 +23,24 @@ desc "  * **type**: string"
 desc "  * **optional**: true"
 desc ""
 lane :start_framework_release do |options|
-  release_version = options[:version] != nil ? options[:version] : ENV['DG_FRAMEWORK_RELEASE_VERSION']
+  release_version = options[:version] != nil ? options[:version] : ENV['DG_RELEASE_VERSION']
   podspec_path = options[:podspec_path] != nil ? options[:podspec_path] : ENV['DG_PODSPEC_PATH']
   project = options[:project] != nil ? options[:project] : ENV['DG_PROJECT']
+  bump_type = options[:bump_type] != nil ? options[:bump_type] : ENV['DG_BUMP_TYPE']
   ensure_git_status_clean()
   if release_version == nil
     version_number = get_version_number(xcodeproj: project)
-    version_number_arr = version_number.split(".")
+    version_number_arr = version_number.split(".").map(&:to_i)
     if version_number_arr.length >= 2
-      minor_version = version_number_arr[2].to_i
-      minor_version = minor_version + 1
-      version_number_arr[2] = minor_version.to_s
+      if bump_type == nil || bump_type == "patch"
+        version_number_arr[2] = version_number_arr[2] + 1
+      elsif bump_type == "minor"
+        version_number_arr[1] = version_number_arr[1] + 1
+      elsif bump_type == "major"
+        version_number_arr[0] = version_number_arr[0] + 1
+      else
+        UI.user_error! "Invalid bump type '#{bump_type}', only patch, minor, major are available"
+      end
       release_version = version_number_arr.join(".")
     else
       UI.user_error! "The project version is invalid '#{version_number}'"
@@ -58,11 +70,11 @@ desc "####How to install ?"
 desc "This lane require the `tests` lane define in [Digipolitan/fastlane-ios-common](https://github.com/Digipolitan/fastlane-ios-common)"
 desc "```\nimport_from_git(\n  url: 'https://github.com/Digipolitan/fastlane-ios-common'\n)\n```"
 desc "####Options"
-desc " * **message**: The commit message"
+desc "* **message**: The commit message"
 desc "  * **type**: string"
 desc "  * **optional**: true"
 desc "  * **default_value**: Release version **VERSION**"
-desc " * **workspace**: The workspace to use."
+desc "* **workspace**: The workspace to use."
 desc "  * **environment_variable**: DG_WORKSPACE"
 desc "  * **type**: string"
 desc "  * **optional**: true"
@@ -76,14 +88,106 @@ desc "  * **type**: string"
 desc "  * **optional**: true"
 desc ""
 lane :submit_framework_release do |options|
+  project = options[:project] != nil ? options[:project] : ENV['DG_PROJECT']
   tests(
     workspace:options[:workspace],
-    project: options[:project],
+    project: project,
     scheme: options[:scheme],
-    skip_slack:true)
+    skip_slack:true
+  )
   ensure_git_status_clean()
-  release_version = get_version_number()
+  release_version = get_version_number(xcodeproj: project)
   message = options[:message] ? options[:message] : "Release version #{release_version}"
   Actions.sh("git flow release finish #{release_version} -p -m '#{message}'")
   UI.success "Successfully submitted framework v#{release_version} to your repository"
+end
+
+desc "CocoaPods deployment lane"
+desc "This lane must be run only on the **master** branch"
+desc "####Options"
+desc "* **podspec_path**: The podspec path"
+desc "  * **environment_variable**: DG_PODSPEC_PATH"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "####Environment variables"
+desc "* **COCOAPODS_TRUNK_TOKEN**: The CocoaPods access token use to push the release to CocoaPods, check below how to retrieve CocoaPods token"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "####Output context variables"
+desc "* **DG_COCOAPODS_RELEASE_LINK**: The CocoaPods release link"
+desc "  * **type**: string"
+desc "####How to retrieve CocoaPods Trunk Token ?"
+desc "First setup your CocoaPods trunk [as follow](https://guides.cocoapods.org/making/getting-setup-with-trunk.html)"
+desc "After that run this command :"
+desc "```\ngrep -A2 'trunk.cocoapods.org' ~/.netrc\n```"
+desc "The output sould be something like this :"
+desc "```\nmachine trunk.cocoapods.org\n  login user@example.com\n  password XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n```"
+desc "The password `XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX` is your CocoaPods trunk token"
+desc ""
+lane :framework_deploy_cocoapods do
+  if git_branch() == "master"
+    UI.user_error! "Run this lane only on a master branch"
+  end
+  podspec = read_podspec(
+    path: params[:podspec_path] ? params[:podspec_path] : ENV['DG_PODSPEC_PATH']
+  )
+  pod_name = podspec["name"]
+  pod_push(
+    allow_warnings: true,
+    verbose: true
+  )
+  lane_context[:DG_COCOAPODS_RELEASE_LINK] = "https://cocoapods.org/pods/#{pod_name}"
+end
+
+desc "GitHub deployment lane"
+desc "This lane must be run only on the **master** branch"
+desc "####Options"
+desc "* **token**: The GitHub access token use to push the release to GitHub, check how to generate access token [here](https://help.github.com/articles/creating-an-access-token-for-command-line-use/)"
+desc "  * **environment_variable**: DG_GITHUB_TOKEN"
+desc "  * **type**: string"
+desc "  * **optional**: false"
+desc "* **repository_name**: The GitHub repository name such as 'company/project'"
+desc "  * **environment_variable**: DG_GITHUB_REPOSITORY_NAME"
+desc "  * **type**: string"
+desc "  * **optional**: false"
+desc "* **project**: Your xcodeproj path"
+desc "  * **environment_variable**: DG_PROJECT"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "* **skip_carthage**: Skip the carthage asset to the GitHub release"
+desc "  * **type**: boolean"
+desc "  * **optional**: true"
+desc "  * **default_value**: false"
+lane :framework_deploy_github do |options|
+  if git_branch() == "master"
+    UI.user_error! "Run this lane only on a master branch"
+  end
+  github_token = options[:token] != nil ? options[:token] : ENV['DG_GITHUB_TOKEN']
+  if github_token == nil
+    UI.user_error! "You must register GitHub token to publish the release version on GitHub"
+  end
+  github_repository_name = options[:repository_name] != nil ? options[:repository_name] : ENV['DG_GITHUB_REPOSITORY_NAME']
+  if github_repository_name == nil
+    UI.user_error! "You must set GitHub repository name"
+  end
+  version_number = get_version_number(xcodeproj: options[:project] != nil ? options[:project] : ENV['DG_PROJECT'])
+  tag_name = "v#{version_number}"
+  github_assets = []
+  if options[:skip_carthage] != true
+    file = Dir['*.framework.zip*'].first
+    if File.exist?(file)
+      github_assets.push(file)
+    else
+      UI.error "No carthage framework found you must build using 'carthage' action"
+    end
+  end
+  set_github_release(
+    repository_name: github_repository_name,
+    name: version_number,
+    api_token: github_token,
+    tag_name: tag_name,
+    description: changelog_from_git_commits(),
+    commitish: "master",
+    upload_assets: github_assets
+  )
 end
