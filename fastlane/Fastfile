@@ -133,7 +133,7 @@ lane :framework_deploy_cocoapods do |options|
     path: podspec_path
   )
   pod_push(
-    path: podspec_path
+    path: podspec_path,
     allow_warnings: true,
     verbose: true
   )
