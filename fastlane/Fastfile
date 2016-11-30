@@ -172,7 +172,8 @@ lane :framework_deploy_github do |options|
   if github_repository_name == nil
     UI.user_error! "You must set GitHub repository name"
   end
-  version_number = get_version_number(xcodeproj: options[:project] != nil ? options[:project] : ENV['DG_PROJECT'])
+  project = options[:project] != nil ? options[:project] : ENV['DG_PROJECT']
+  version_number = get_version_number(xcodeproj: project)
   tag_name = "v#{version_number}"
   github_assets = []
   if options[:skip_carthage] != true
