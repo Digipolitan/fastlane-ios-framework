@@ -218,5 +218,5 @@ lane :framework_deploy_github do |options|
     commitish: "master",
     upload_assets: github_assets
   )
-  Actions.sh("bash <(curl -s https://codecov.io/bash)")
+  Actions.sh("curl -s https://codecov.io/bash | bash")
 end
