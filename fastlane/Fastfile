@@ -201,9 +201,10 @@ lane :framework_deploy_github do |options|
   tag_name = "v#{version_number}"
   github_assets = []
   if options[:skip_carthage] != true
-    file = Dir['*.framework.zip*'].first
-    if File.exist?(file)
-      github_assets.push(file)
+    if files = files_matching(pattern: "*.framework.zip", basename: false)
+      files.each { |f|
+        github_assets.push(f)
+      }
     else
       UI.error "No carthage framework found you must build using 'carthage' action"
     end
