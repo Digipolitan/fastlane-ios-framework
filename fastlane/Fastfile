@@ -31,7 +31,9 @@ lane :start_framework_release do |options|
       :podspec_path => {:env_var => "DG_PODSPEC_PATH"},
       :project => {:env_var => "DG_PROJECT"},
       :product_name => {:env_var => "DG_PRODUCT_NAME"},
-      :bump_type => {:env_var => "DG_BUMP_TYPE"}
+      :bump_type => {:env_var => "DG_BUMP_TYPE"},
+      :release_url => {:env_var => "DG_RELEASE_URL"},
+      :change_log => {:env_var => "DG_CHANGELOG_CONTENT"}
     }
   )
   release_version = options[:version]
@@ -74,19 +76,30 @@ lane :start_framework_release do |options|
     action: "publish",
     name: release_version
   )
+  remote_info = git_get_remote_info()
   if options[:product_name] == nil
-    remote_info = git_get_remote_info()
     if path = remote_info[:path]
       if i = path.rindex("/")
         options[:product_name] = path.slice(i + 1, path.length - i - 1)
       end
     end
   end
+  if options[:change_log] == nil
+    options[:change_log] = changelog_from_git_commits()
+  end
+  if options[:release_url] == nil
+    host = remote_info[:host]
+    path = remote_info[:path]
+    if host == "github.com" && path != nil
+      options[:release_url] = "https://#{host}/#{path}/releases/tag/v#{release_version}"
+    end
+  end
   if options[:product_name]
     new_changelog_version(
       version: release_version,
       product_name: options[:product_name],
-      content: changelog_from_git_commits()
+      url: options[:release_url]
+      content: options[:change_log]
     )
   end
   UI.success "Release #{release_version} created"
