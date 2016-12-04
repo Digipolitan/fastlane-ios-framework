@@ -54,7 +54,7 @@ lane :start_framework_release do |options|
     end
   end
   git_flow_release(
-    action: "start"
+    action: "start",
     name: release_version
   )
   increment_version_number(
@@ -70,11 +70,11 @@ lane :start_framework_release do |options|
     message: "Bumped release version #{release_version}"
   )
   git_flow_release(
-    action: "publish"
+    action: "publish",
     name: release_version
   )
   new_changelog_version(
-    version: release_version
+    version: release_version,
     content: changelog_from_git_commits()
   )
   UI.success "Release #{release_version} created"
