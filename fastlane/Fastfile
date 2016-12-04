@@ -85,7 +85,7 @@ lane :start_framework_release do |options|
   if options[:product_name]
     new_changelog_version(
       version: release_version,
-      product_name: options[:product_name]
+      product_name: options[:product_name],
       content: changelog_from_git_commits()
     )
   end
