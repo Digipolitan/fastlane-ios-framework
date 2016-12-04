@@ -98,7 +98,7 @@ lane :start_framework_release do |options|
     new_changelog_version(
       version: release_version,
       product_name: options[:product_name],
-      url: options[:release_url]
+      url: options[:release_url],
       content: options[:change_log]
     )
   end
