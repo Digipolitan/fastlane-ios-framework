@@ -30,6 +30,7 @@ lane :start_framework_release do |options|
       :version => {:env_var => "DG_RELEASE_VERSION"},
       :podspec_path => {:env_var => "DG_PODSPEC_PATH"},
       :project => {:env_var => "DG_PROJECT"},
+      :product_name => {:env_var => "DG_PRODUCT_NAME"},
       :bump_type => {:env_var => "DG_BUMP_TYPE"}
     }
   )
@@ -73,10 +74,21 @@ lane :start_framework_release do |options|
     action: "publish",
     name: release_version
   )
-  new_changelog_version(
-    version: release_version,
-    content: changelog_from_git_commits()
-  )
+  if options[:product_name] == nil
+    remote_info = git_get_remote_info()
+    if path = remote_info[:path]
+      if i = path.rindex("/")
+        options[:product_name] = path.slice(i + 1, path.length - i - 1)
+      end
+    end
+  end
+  if options[:product_name]
+    new_changelog_version(
+      version: release_version,
+      product_name: options[:product_name]
+      content: changelog_from_git_commits()
+    )
+  end
   UI.success "Release #{release_version} created"
 end
 
