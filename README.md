@@ -1,4 +1,4 @@
-Digipolitan Fastlane iOS framework
+Digipolitan fastlane-ios-framework
 ================
 
 Create framework lanes used by Digipolitan repositories
