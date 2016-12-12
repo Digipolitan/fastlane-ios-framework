@@ -39,6 +39,7 @@ desc "  * **optional**: true"
 desc ""
 lane :start_framework_release do |options|
   ensure_git_status_clean()
+  ensure_git_flow_init()
   prepare_lane_options(
     options: options,
     mapping: {
@@ -147,6 +148,7 @@ desc "  * **optional**: true"
 desc ""
 lane :submit_framework_release do |options|
   ensure_git_status_clean()
+  ensure_git_flow_init()
   prepare_lane_options(
     options: options,
     mapping: {
@@ -156,13 +158,23 @@ lane :submit_framework_release do |options|
       :message => {:env_var => "DG_RELEASE_MESSAGE"}
     }
   )
+  release_version = get_version_number(xcodeproj: options[:project])
+  if changelog = get_changelog()
+    UI.message "Check your change log content below :"
+    UI.message changelog
+    result = UI.confirm("Are you sure to submit the framework v#{release_version} with this changelog ?")
+    if !result
+      abort("Abort framework release")
+    end
+  else
+    UI.error "Missing changelog content"
+  end
   scan(
     workspace: options[:workspace],
     project: options[:project],
     scheme: options[:scheme],
     skip_slack:true
   )
-  release_version = get_version_number(xcodeproj: options[:project])
   message = options[:message] != nil ? options[:message] : "Release version #{release_version}"
   git_flow_release(
     action: "finish",
@@ -263,15 +275,19 @@ lane :framework_deploy_github do |options|
         github_assets.push(f)
       }
     else
-      UI.error "No carthage framework found you must build using 'carthage' action"
+      UI.message "No carthage framework found you must build using 'carthage' action"
     end
+  end
+  changelog = get_changelog()
+  if changelog == nil
+    changelog = changelog_from_git_commits()
   end
   set_github_release(
     repository_name: options[:repository_name],
     name: version_number,
     api_token: options[:token],
     tag_name: tag_name,
-    description: changelog_from_git_commits(),
+    description: changelog,
     commitish: "master",
     upload_assets: github_assets
   )
