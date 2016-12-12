@@ -160,8 +160,7 @@ lane :submit_framework_release do |options|
   )
   release_version = get_version_number(xcodeproj: options[:project])
   if changelog = get_changelog()
-    UI.message "Check your change log content below :"
-    UI.message changelog
+    UI.message "Check your change log content below :\n#{changelog}"
     result = UI.confirm("Are you sure to submit the framework v#{release_version} with this changelog ?")
     if !result
       abort("Abort framework release")
