@@ -15,13 +15,23 @@ This lane require **git flow** installed in your framework directory check docum
 
 You will automatically be switched to release/X.X.X branch after this lane and your project/podsec version will be updated
 
-####Example using specific version:
+#### How to install ?
+
+This lane require actions define in [Digipolitan/fastlane-common](https://github.com/Digipolitan/fastlane-common)
+
+```
+import_from_git(
+  url: 'https://github.com/Digipolitan/fastlane-common'
+)
+```
+
+#### Example using specific version:
 
 ```
 fastlane start_framework_release version:4.0.9
 ```
 
-####Options
+#### Options
 
 * **bump_type**: The type of this version bump. Available: patch, minor, major
 
@@ -57,6 +67,30 @@ fastlane start_framework_release version:4.0.9
 
   * **optional**: true
 
+* **product_name**: The framework name
+
+  * **environment_variable**: DG_PRODUCT_NAME
+
+  * **type**: string
+
+  * **optional**: true
+
+* **release_url**: The release url use by the changelog
+
+  * **environment_variable**: DG_RELEASE_URL
+
+  * **type**: string
+
+  * **optional**: true
+
+* **change_log**: The changelog content
+
+  * **environment_variable**: DG_CHANGELOG_CONTENT
+
+  * **type**: string
+
+  * **optional**: true
+
 
 ### submit_framework_release
 ```
@@ -68,19 +102,21 @@ This lane require **git flow** installed in your framework directory check docum
 
 You will automatically be switched to develop branch after this lane
 
-####How to install ?
+#### How to install ?
 
-This lane require the `tests` lane define in [Digipolitan/fastlane-ios-common](https://github.com/Digipolitan/fastlane-ios-common)
+This lane require actions define in [Digipolitan/fastlane-common](https://github.com/Digipolitan/fastlane-common)
 
 ```
 import_from_git(
-  url: 'https://github.com/Digipolitan/fastlane-ios-common'
+  url: 'https://github.com/Digipolitan/fastlane-common'
 )
 ```
 
-####Options
+#### Options
 
 * **message**: The commit message
+
+  * **environment_variable**: DG_RELEASE_MESSAGE
 
   * **type**: string
 
@@ -121,7 +157,7 @@ CocoaPods deployment lane
 
 This lane must be run only on the **master** branch
 
-####Options
+#### Options
 
 * **podspec_path**: The podspec path
 
@@ -131,7 +167,7 @@ This lane must be run only on the **master** branch
 
   * **optional**: true
 
-####Environment variables
+#### CI Environment variables
 
 * **COCOAPODS_TRUNK_TOKEN**: The CocoaPods access token use to push the release to CocoaPods, check below how to retrieve CocoaPods token
 
@@ -139,13 +175,13 @@ This lane must be run only on the **master** branch
 
   * **optional**: true
 
-####Output context variables
+#### Output context variables
 
 * **DG_COCOAPODS_RELEASE_LINK**: The CocoaPods release link
 
   * **type**: string
 
-####How to retrieve CocoaPods Trunk Token ?
+#### How to retrieve CocoaPods Trunk Token ?
 
 First setup your CocoaPods trunk [as follow](https://guides.cocoapods.org/making/getting-setup-with-trunk.html)
 
@@ -174,7 +210,7 @@ GitHub deployment lane
 
 This lane must be run only on the **master** branch
 
-####Options
+#### Options
 
 * **token**: The GitHub access token use to push the release to GitHub, check how to generate access token [here](https://help.github.com/articles/creating-an-access-token-for-command-line-use/)
 
