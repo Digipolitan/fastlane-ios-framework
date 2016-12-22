@@ -1,29 +1,3 @@
-private_lane :prepare_framework_release do |options|
-  ensure_git_status_clean()
-  ensure_git_flow_init()
-  prepare_lane_options(
-    options: options,
-    mapping: {
-      :project => {:env_var => "DG_PROJECT"}
-    }
-  )
-  develop_branch = git_get_develop_branch()
-  if git_branch() != develop_branch
-    UI.user_error! "You must run this lane on the '#{develop_branch}' only"
-  end
-  version_number = get_version_number(xcodeproj: options[:project])
-  build_number = get_build_number(xcodeproj: options[:project])
-  ensure_version_availability(
-    current_version_number: version_number,
-    current_build_number: build_number
-  )
-  version_number = lane_context[SharedValues::NEXT_VERSION_NUMBER]
-  build_number = lane_context[SharedValues::NEXT_BUILD_NUMBER]
-  if !UI.confirm("Are you sure to submit release version '#{version_number}' build ##{build_number} ?")
-    UI.user_error! "User abort framework release"
-  end
-end
-
 lane :bootstrap do |options|
   prepare_lane_options(
     options: options,
@@ -94,7 +68,7 @@ desc "  * **type**: string"
 desc "  * **optional**: true"
 desc ""
 lane :start_framework_release do |options|
-  prepare_framework_release(options)
+  prepare_for_release(options)
   current_version_number = lane_context[SharedValues::VERSION_NUMBER]
   current_build_number = lane_context[SharedValues::BUILD_NUMBER]
   version_number = lane_context[SharedValues::NEXT_VERSION_NUMBER]
