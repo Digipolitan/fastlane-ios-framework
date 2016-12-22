@@ -1,3 +1,29 @@
+private_lane :prepare_framework_release do |options|
+  ensure_git_status_clean()
+  ensure_git_flow_init()
+  prepare_lane_options(
+    options: options,
+    mapping: {
+      :project => {:env_var => "DG_PROJECT"}
+    }
+  )
+  develop_branch = git_get_develop_branch()
+  if git_branch() != develop_branch
+    UI.user_error! "You must run this lane on the '#{develop_branch}' only"
+  end
+  version_number = get_version_number(xcodeproj: options[:project])
+  build_number = get_build_number(xcodeproj: options[:project])
+  ensure_version_availability(
+    current_version_number: version_number,
+    current_build_number: build_number
+  )
+  version_number = lane_context[SharedValues::NEXT_VERSION_NUMBER]
+  build_number = lane_context[SharedValues::NEXT_BUILD_NUMBER]
+  if !UI.confirm("Are you sure to submit release version '#{version_number}' build ##{build_number} ?")
+    UI.user_error! "User abort framework release"
+  end
+end
+
 desc "Start new framework release version on your git repository"
 desc "This lane require **git flow** installed in your framework directory check documentation [here](https://github.com/nvie/gitflow)"
 desc "You will automatically be switched to release/X.X.X branch after this lane and your project/podsec version will be updated"
@@ -38,8 +64,20 @@ desc "  * **type**: string"
 desc "  * **optional**: true"
 desc ""
 lane :start_framework_release do |options|
-  ensure_git_status_clean()
-  ensure_git_flow_init()
+  prepare_framework_release(options)
+  current_version_number = lane_context[SharedValues::VERSION_NUMBER]
+  current_build_number = lane_context[SharedValues::BUILD_NUMBER]
+  version_number = lane_context[SharedValues::NEXT_VERSION_NUMBER]
+  build_number = lane_context[SharedValues::NEXT_BUILD_NUMBER]
+  begin
+    git_flow_release(
+      action: "start",
+      name: version_number
+    )
+  rescue
+    UI.user_error! "Cannot start release '#{version_number}', you are probably starting the current release version\n\
+    * if you want to publish the release use the lane : 'publish_framework_release'"
+  end
   prepare_lane_options(
     options: options,
     mapping: {
@@ -47,50 +85,31 @@ lane :start_framework_release do |options|
       :podspec_path => {:env_var => "DG_PODSPEC_PATH"},
       :project => {:env_var => "DG_PROJECT"},
       :product_name => {:env_var => "DG_PRODUCT_NAME"},
-      :bump_type => {:env_var => "DG_BUMP_TYPE"},
       :release_url => {:env_var => "DG_RELEASE_URL"},
       :change_log => {:env_var => "DG_CHANGELOG_CONTENT"}
     }
   )
-  release_version = options[:version]
-  bump_type = options[:bump_type]
-  if release_version == nil
-    version_number = get_version_number(xcodeproj: options[:project])
-    version_number_arr = version_number.split(".").map(&:to_i)
-    if version_number_arr.length >= 2
-      if bump_type == nil || bump_type == "patch"
-        version_number_arr[2] = version_number_arr[2] + 1
-      elsif bump_type == "minor"
-        version_number_arr[1] = version_number_arr[1] + 1
-      elsif bump_type == "major"
-        version_number_arr[0] = version_number_arr[0] + 1
-      else
-        UI.user_error! "Invalid bump type '#{bump_type}', only patch, minor, major are available"
-      end
-      release_version = version_number_arr.join(".")
-    else
-      UI.user_error! "The project version is invalid '#{version_number}'"
-    end
+  if current_version_number != version_number || current_build_number != build_number
+    increment_version_number(
+      xcodeproj: options[:project],
+      version_number: version_number
+    )
+    increment_build_number(
+      xcodeproj: options[:project],
+      build_number: build_number
+    )
+    version_bump_podspec(
+      path: options[:podspec_path],
+      version_number: version_number
+    )
+    git_commit(
+      path: ["."],
+      message: "Bumped release version '#{version_number}' build ##{build_number}"
+    )
   end
   git_flow_release(
-    action: "start",
-    name: release_version
-  )
-  increment_version_number(
-    xcodeproj: options[:project],
-    version_number: release_version
-  )
-  version_bump_podspec(
-    path: options[:podspec_path],
-    version_number: release_version
-  )
-  git_commit(
-    path: ["."],
-    message: "Bumped release version #{release_version}"
-  )
-  git_flow_release(
     action: "publish",
-    name: release_version
+    name: version_number
   )
   remote_info = git_get_remote_info()
   if options[:product_name] == nil
@@ -107,18 +126,18 @@ lane :start_framework_release do |options|
     host = remote_info[:host]
     path = remote_info[:path]
     if host == "github.com" && path != nil
-      options[:release_url] = "https://#{host}/#{path}/releases/tag/v#{release_version}"
+      options[:release_url] = "https://#{host}/#{path}/releases/tag/v#{version_number}"
     end
   end
   if options[:product_name] != nil
     new_changelog_version(
-      version: release_version,
+      version: version_number,
       product_name: options[:product_name],
       url: options[:release_url],
       content: options[:change_log]
     )
   end
-  UI.success "Release #{release_version} created"
+  UI.success "Release #{version_number} created.\nCheck the readme.md and the CHANGELOG.md after that when your framework is ready execute the lane 'publish_framework_release'"
 end
 
 desc "Submit the framework release version on your git repository and close the branch"
@@ -146,7 +165,7 @@ desc "  * **environment_variable**: DG_SCHEME"
 desc "  * **type**: string"
 desc "  * **optional**: true"
 desc ""
-lane :submit_framework_release do |options|
+lane :publish_framework_release do |options|
   ensure_git_status_clean()
   ensure_git_flow_init()
   prepare_lane_options(
@@ -158,15 +177,14 @@ lane :submit_framework_release do |options|
       :message => {:env_var => "DG_RELEASE_MESSAGE"}
     }
   )
-  release_version = get_version_number(xcodeproj: options[:project])
+  version_number = get_version_number(xcodeproj: options[:project])
   if changelog = get_changelog()
     UI.message "Check your change log content below :\n#{changelog}"
-    result = UI.confirm("Are you sure to submit the framework v#{release_version} with this changelog ?")
-    if !result
-      abort("Abort framework release")
+    if !UI.confirm("Are you sure to submit the framework v#{version_number} with this changelog ?")
+      UI.user_error! "User abort framework release"
     end
-  else
-    UI.error "Missing changelog content"
+  elsif !UI.confirm("Missing changelog content ! Continue ?")
+    UI.user_error! "User abort framework release"
   end
   scan(
     workspace: options[:workspace],
@@ -174,13 +192,13 @@ lane :submit_framework_release do |options|
     scheme: options[:scheme],
     skip_slack:true
   )
-  message = options[:message] != nil ? options[:message] : "Release version #{release_version}"
+  message = options[:message] != nil ? options[:message] : "Release version #{version_number}"
   git_flow_release(
     action: "finish",
-    name: release_version,
+    name: version_number,
     message: message
   )
-  UI.success "Successfully submitted framework v#{release_version} to your repository"
+  UI.success "Successfully submitted framework v#{version_number} to your repository"
 end
 
 desc "CocoaPods deployment lane"
@@ -206,8 +224,9 @@ desc "```\nmachine trunk.cocoapods.org\n  login user@example.com\n  password XXX
 desc "The password `XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX` is your CocoaPods trunk token"
 desc ""
 lane :framework_deploy_cocoapods do |options|
-  if git_branch() != "master"
-    UI.user_error! "Run this lane only on a master branch"
+  master_branch = git_get_master_branch()
+  if git_branch() != master_branch
+    UI.user_error! "Run this lane only on a #{master_branch} branch"
   end
   if ENV["CI"] == true && ENV["COCOAPODS_TRUNK_TOKEN"] == nil
     UI.user_error! "COCOAPODS_TRUNK_TOKEN not found in the CI environment"
@@ -250,8 +269,9 @@ desc "  * **type**: boolean"
 desc "  * **optional**: true"
 desc "  * **default_value**: false"
 lane :framework_deploy_github do |options|
-  if git_branch() != "master"
-    UI.user_error! "Run this lane only on a master branch"
+  master_branch = git_get_master_branch()
+  if git_branch() != master_branch
+    UI.user_error! "Run this lane only on a #{master_branch} branch"
   end
   prepare_lane_options(
     options: options,
@@ -287,7 +307,7 @@ lane :framework_deploy_github do |options|
     api_token: options[:token],
     tag_name: tag_name,
     description: changelog,
-    commitish: "master",
+    commitish: master_branch,
     upload_assets: github_assets
   )
   Actions.sh("curl -s https://codecov.io/bash | bash")
