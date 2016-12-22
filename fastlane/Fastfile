@@ -24,6 +24,36 @@ private_lane :prepare_framework_release do |options|
   end
 end
 
+lane :bootstrap do |options|
+  prepare_lane_options(
+    options: options,
+    mapping: {
+      :project => {:env_var => "DG_PROJECT"},
+      :podspec_path => {:env_var => "DG_PODSPEC_PATH"}
+    }
+  )
+  appfile_init(
+    fetch_app_identifier: 1,
+    fetch_apple_id: 0,
+    fetch_team_name: 0,
+    fetch_itc_team_name: 0
+  )
+  if UI.confirm("Would you like to reset the project version ?")
+    increment_version_number(
+      xcodeproj: options[:project],
+      version_number: "1.0.0"
+    )
+    increment_build_number(
+      xcodeproj: options[:project],
+      build_number: "1"
+    )
+    version_bump_podspec(
+      path: options[:podspec_path],
+      version_number: "1.0.0"
+    )
+  end
+end
+
 desc "Start new framework release version on your git repository"
 desc "This lane require **git flow** installed in your framework directory check documentation [here](https://github.com/nvie/gitflow)"
 desc "You will automatically be switched to release/X.X.X branch after this lane and your project/podsec version will be updated"

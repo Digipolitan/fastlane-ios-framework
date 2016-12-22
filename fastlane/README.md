@@ -5,6 +5,11 @@ fastlane documentation
 sudo gem install fastlane
 ```
 # Available Actions
+### bootstrap
+```
+fastlane bootstrap
+```
+
 ### start_framework_release
 ```
 fastlane start_framework_release
