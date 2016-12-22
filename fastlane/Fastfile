@@ -1,3 +1,12 @@
+import_from_git(
+  url: 'https://github.com/Digipolitan/fastlane-common',
+  branch: "develop"
+)
+import_from_git(
+  url: 'https://github.com/Digipolitan/fastlane-ios',
+  branch: "develop"
+)
+
 lane :bootstrap do |options|
   prepare_lane_options(
     options: options,
@@ -25,6 +34,79 @@ lane :bootstrap do |options|
       path: options[:podspec_path],
       version_number: "1.0.0"
     )
+  end
+end
+
+lane :get_deployment_info do |options|
+  git_url = nil
+  homepage = nil
+  company = nil
+  identifier = nil
+  if remote_info = git_get_remote_info()
+    git_url = remote_info[:url]
+    host = remote_info[:host]
+    if path = remote_info[:path]
+      homepage = "https://#{host}/#{path}"
+      if i = path.index('/')
+        company = path[0, i]
+        i += 1
+        identifier = path[i, path.length - i]
+      end
+    end
+  end
+  if options[:skip_user_validation] != false
+    user_validation(
+      fields: [{
+        name: "Git URL",
+        value: git_url,
+        lane_context: :DEPLOYMENT_GIT_URL,
+        optional: false
+      }, {
+        name: "Homepage",
+        value: homepage,
+        lane_context: :DEPLOYMENT_HOMEPAGE,
+        optional: false
+      }, {
+        name: "Company",
+        value: company,
+        lane_context: :DEPLOYMENT_COMPANY,
+        optional: false
+      }, {
+        name: "Project identifier",
+        value: identifier,
+        lane_context: :DEPLOYMENT_IDENTIFIER,
+        optional: false
+      }]
+    )
+  end
+end
+
+lane :create_podspec do |options|
+  get_deployment_info(options)
+  git_url = Actions.lane_context[:DEPLOYMENT_GIT_URL]
+  homepage = Actions.lane_context[:DEPLOYMENT_HOMEPAGE]
+  company = Actions.lane_context[:DEPLOYMENT_COMPANY]
+  identifier = Actions.lane_context[:DEPLOYMENT_IDENTIFIER]
+  prepare_lane_options(
+    options: options,
+    mapping: {
+      :podspec_path => {:env_var => "DG_PODSPEC_PATH"},
+      :xcodeproj => {:env_var => "XCODEPROJ_PATH"}
+    }
+  )
+  project_info = get_project_info(xcodeproj: options[:xcodeproj])
+  if framework_name = project_info[:name]
+    data = "Pod::Spec.new do |s|\n";
+    data += "s.name = \"#{framework_name}\"\n"
+    version = get_version_number(
+      xcodeproj: project_info[:xcodeproj]
+    )
+    data += "s.version = \"#{version}\"\n"
+    data += "s.summary = \"XXXX\"\n"
+    data += "s.homepage = \"#{homepage}\"\n"
+    data += "s.source = { :git => \"#{git_url}\", :tag => \"v\#{s.version}\" }\n"
+    data += "s.license = { :type => \"BSD\", :file => \"LICENSE\" }\n"
+    UI.message data
   end
 end
 

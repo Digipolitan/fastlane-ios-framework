@@ -5,9 +5,34 @@ fastlane documentation
 sudo gem install fastlane
 ```
 # Available Actions
+### ensure_version_availability
+```
+fastlane ensure_version_availability
+```
+
+### prepare_for_release
+```
+fastlane prepare_for_release
+```
+
+### appfile_init
+```
+fastlane appfile_init
+```
+
 ### bootstrap
 ```
 fastlane bootstrap
+```
+
+### get_deployment_info
+```
+fastlane get_deployment_info
+```
+
+### create_podspec
+```
+fastlane create_podspec
 ```
 
 ### start_framework_release
