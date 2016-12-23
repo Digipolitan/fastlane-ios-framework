@@ -20,19 +20,14 @@ fastlane prepare_for_release
 fastlane appfile_init
 ```
 
+### test
+```
+fastlane test
+```
+
 ### bootstrap
 ```
 fastlane bootstrap
-```
-
-### get_deployment_info
-```
-fastlane get_deployment_info
-```
-
-### create_podspec
-```
-fastlane create_podspec
 ```
 
 ### start_framework_release

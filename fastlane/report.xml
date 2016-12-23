@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="fastlane.lanes">
+    
+      
+      <testcase classname="fastlane.lanes" name="0: import_from_git" time="1.938837">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="1: import_from_git" time="2.000439">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="2: prepare_lane_options" time="0.000777">
+        
+      </testcase>
+    
+  </testsuite>
+</testsuites>

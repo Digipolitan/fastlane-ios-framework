@@ -7,106 +7,126 @@ import_from_git(
   branch: "develop"
 )
 
+lane :test do |options|
+
+  prepare_lane_options(
+    options: options,
+    mapping: {
+      :xcworkspace => {:env_var => "XCWORKSPACE"}
+    }
+  )
+  workspace = Xcodeproj::Workspace.new_from_xcworkspace(options[:xcworkspace])
+  all_xcodeproj_map = Hash[workspace.file_references.map { |key| [File.basename(key.path, ".xcodeproj"), key] }]
+  print workspace.document
+  print all_xcodeproj_map["DGFrameworkTemplateSample-OSX"].to_node
+  workspace.document..delete_element(all_xcodeproj_map["DGFrameworkTemplateSample-OSX"].to_node)
+  ##workspace.document.delete_element("/Workspace/FileRef[@location=\"group:Samples/DGFrameworkTemplateSample-OSX/DGFrameworkTemplateSample-OSX.xcodeproj\"]")
+  print workspace.document
+#  workspace.save_as(options[:xcworkspace])
+end
+
 lane :bootstrap do |options|
   prepare_lane_options(
     options: options,
     mapping: {
-      :project => {:env_var => "DG_PROJECT"},
-      :podspec_path => {:env_var => "DG_PODSPEC_PATH"}
+      :xcodeproj => {:env_var => "XCODEPROJ"},
+      :podspec => {:env_var => "PODSPEC"}
     }
   )
   appfile_init(
+    xcodeproj: options[:xcodeproj],
     fetch_app_identifier: 1,
     fetch_apple_id: 0,
     fetch_team_name: 0,
     fetch_itc_team_name: 0
   )
-  if UI.confirm("Would you like to reset the project version ?")
+  if UI.confirm("Would you like to reset the project's version ?")
     increment_version_number(
-      xcodeproj: options[:project],
+      xcodeproj: options[:xcodeproj],
       version_number: "1.0.0"
     )
     increment_build_number(
-      xcodeproj: options[:project],
+      xcodeproj: options[:xcodeproj],
       build_number: "1"
     )
-    version_bump_podspec(
-      path: options[:podspec_path],
-      version_number: "1.0.0"
-    )
   end
-end
-
-lane :get_deployment_info do |options|
-  git_url = nil
-  homepage = nil
-  company = nil
-  identifier = nil
-  if remote_info = git_get_remote_info()
-    git_url = remote_info[:url]
-    host = remote_info[:host]
-    if path = remote_info[:path]
-      homepage = "https://#{host}/#{path}"
-      if i = path.index('/')
-        company = path[0, i]
-        i += 1
-        identifier = path[i, path.length - i]
+  if UI.confirm("Would you like to edit the project's configuration ?")
+    project_info = get_project_info(xcodeproj: options[:xcodeproj])
+    if framework_name = project_info[:name]
+      podspec_info = {}
+      if remote_info = git_get_remote_info()
+        podspec_info[:host] = remote_info[:host]
+        if path = remote_info[:path]
+          podspec_info[:homepage] = "https://#{podspec_info[:host]}/#{path}"
+          podspec_info[:git_url] = "#{podspec_info[:homepage]}.git"
+          if i = path.index('/')
+            podspec_info[:company] = path[0, i]
+            i += 1
+            podspec_info[:identifier] = path[i, path.length - i]
+          end
+        end
       end
+      user_validation(
+        fields: [{
+          name: "Git URL",
+          value: podspec_info[:git_url],
+          lane_context: :PODSPEC_GIT_URL,
+          optional: false
+        }, {
+          name: "Homepage",
+          value: podspec_info[:homepage],
+          lane_context: :PODSPEC_HOMEPAGE
+        }, {
+          name: "Company",
+          value: podspec_info[:company],
+          lane_context: :PODSPEC_COMPANY
+        }, {
+          name: "Project identifier",
+          value: podspec_info[:identifier],
+          lane_context: :PODSPEC_IDENTIFIER,
+          optional: false
+        }]
+      )
+      ios = UI.confirm("Is your framework compatible iOS ?") ? '8.0' : nil
+      watchos = UI.confirm("Is your framework compatible wathOS ?") ? '2.0' : nil
+      tvos = UI.confirm("Is your framework compatible tvOS ?") ? '9.0' : nil
+      osx = UI.confirm("Is your framework compatible OSX ?") ? '10.9' : nil
+      authors = []
+      if company = Actions.lane_context[:PODSPEC_COMPANY]
+        authors.push(company)
+      end
+      edit_podspec(
+        podspec: options[:podspec],
+        pod_name: framework_name,
+        version: get_version_number(
+          xcodeproj: project_info[:xcodeproj]
+        ),
+        summary: "This is a summary.",
+        homepage: Actions.lane_context[:PODSPEC_HOMEPAGE],
+        git_url: Actions.lane_context[:PODSPEC_GIT_URL],
+        authors: authors,
+        ios_deployment_target: ios,
+        osx_deployment_target: osx,
+        tvos_deployment_target: tvos,
+        watchos_deployment_target: watchos
+      )
+      edit_podfile(
+        xcodeproj: project_info[:xcodeproj],
+        ios_deployment_target: ios,
+        osx_deployment_target: osx,
+        tvos_deployment_target: tvos,
+        watchos_deployment_target: watchos
+      )
+      edit_xcodeproj(
+        xcodeproj: project_info[:xcodeproj],
+        ios: ios != nil,
+        watchos: watchos != nil,
+        tvos: tvos != nil,
+        osx: osx != nil
+      )
+    else
+      UI.user_error! "No project found"
     end
-  end
-  if options[:skip_user_validation] != false
-    user_validation(
-      fields: [{
-        name: "Git URL",
-        value: git_url,
-        lane_context: :DEPLOYMENT_GIT_URL,
-        optional: false
-      }, {
-        name: "Homepage",
-        value: homepage,
-        lane_context: :DEPLOYMENT_HOMEPAGE,
-        optional: false
-      }, {
-        name: "Company",
-        value: company,
-        lane_context: :DEPLOYMENT_COMPANY,
-        optional: false
-      }, {
-        name: "Project identifier",
-        value: identifier,
-        lane_context: :DEPLOYMENT_IDENTIFIER,
-        optional: false
-      }]
-    )
-  end
-end
-
-lane :create_podspec do |options|
-  get_deployment_info(options)
-  git_url = Actions.lane_context[:DEPLOYMENT_GIT_URL]
-  homepage = Actions.lane_context[:DEPLOYMENT_HOMEPAGE]
-  company = Actions.lane_context[:DEPLOYMENT_COMPANY]
-  identifier = Actions.lane_context[:DEPLOYMENT_IDENTIFIER]
-  prepare_lane_options(
-    options: options,
-    mapping: {
-      :podspec_path => {:env_var => "DG_PODSPEC_PATH"},
-      :xcodeproj => {:env_var => "XCODEPROJ_PATH"}
-    }
-  )
-  project_info = get_project_info(xcodeproj: options[:xcodeproj])
-  if framework_name = project_info[:name]
-    data = "Pod::Spec.new do |s|\n";
-    data += "s.name = \"#{framework_name}\"\n"
-    version = get_version_number(
-      xcodeproj: project_info[:xcodeproj]
-    )
-    data += "s.version = \"#{version}\"\n"
-    data += "s.summary = \"XXXX\"\n"
-    data += "s.homepage = \"#{homepage}\"\n"
-    data += "s.source = { :git => \"#{git_url}\", :tag => \"v\#{s.version}\" }\n"
-    data += "s.license = { :type => \"BSD\", :file => \"LICENSE\" }\n"
-    UI.message data
   end
 end
 
