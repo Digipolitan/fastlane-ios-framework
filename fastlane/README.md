@@ -20,11 +20,6 @@ fastlane prepare_for_release
 fastlane appfile_init
 ```
 
-### test
-```
-fastlane test
-```
-
 ### bootstrap
 ```
 fastlane bootstrap

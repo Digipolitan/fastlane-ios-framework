@@ -3,17 +3,72 @@
   <testsuite name="fastlane.lanes">
     
       
-      <testcase classname="fastlane.lanes" name="0: import_from_git" time="1.938837">
+      <testcase classname="fastlane.lanes" name="0: import_from_git" time="1.184305">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="1: import_from_git" time="2.000439">
+      <testcase classname="fastlane.lanes" name="1: import_from_git" time="0.936923">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="2: prepare_lane_options" time="0.000777">
+      <testcase classname="fastlane.lanes" name="2: prepare_lane_options" time="0.000731">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="3: Switch to appfile_init lane" time="0.000365">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="4: prepare_lane_options" time="0.000417">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="5: user_validation" time="1.571819">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="6: get_project_info" time="0.000791">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="7: git_get_remote_info" time="0.010574">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="8: user_validation" time="1.661051">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="9: get_version_number" time="0.732307">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="10: edit_podspec" time="0.000888">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="11: edit_podfile" time="0.000681">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="12: edit_xcodeproj" time="0.194722">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="13: edit_xcworkspace" time="0.035913">
         
       </testcase>
     

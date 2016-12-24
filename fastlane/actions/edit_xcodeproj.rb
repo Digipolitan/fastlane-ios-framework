@@ -11,16 +11,16 @@ module Fastlane
         project = Xcodeproj::Project.open(xcodeproj)
         all_targets_map = Hash[project.targets.map { |key| [key.name, key] }]
         all_schemes_map = Hash[schemes.map { |key| [File.basename(key, ".xcscheme"), key] }]
-        if params[:ios] == false
+        if params[:ios_available] == false
           self.remove_platform(all_targets_map, all_schemes_map, project_name, "iOS")
         end
-        if params[:watchos] == false
+        if params[:watchos_available] == false
           self.remove_platform(all_targets_map, all_schemes_map, project_name, "watchOS")
         end
-        if params[:tvos] == false
+        if params[:tvos_available] == false
           self.remove_platform(all_targets_map, all_schemes_map, project_name, "tvOS")
         end
-        if params[:osx] == false
+        if params[:osx_available] == false
           self.remove_platform(all_targets_map, all_schemes_map, project_name, "OSX")
         end
         project.save()
@@ -53,20 +53,20 @@ module Fastlane
                                        optional: false,
                                        verify_block: proc do |value|
                                        end),
-          FastlaneCore::ConfigItem.new(key: :ios,
-                                       env_name: "EDIT_XCODEPROJ_IOS",
+          FastlaneCore::ConfigItem.new(key: :ios_available,
+                                       env_name: "FRAMEWORK_IOS_AVAILABLE",
                                        is_string: false,
                                        default_value: true),
-          FastlaneCore::ConfigItem.new(key: :watchos,
-                                       env_name: "EDIT_XCODEPROJ_WATCHOS",
+          FastlaneCore::ConfigItem.new(key: :watchos_available,
+                                       env_name: "FRAMEWORK_WATCHOS_AVAILABLE",
                                        is_string: false,
                                        default_value: true),
-          FastlaneCore::ConfigItem.new(key: :tvos,
-                                      env_name: "EDIT_XCODEPROJ_TVOS",
+          FastlaneCore::ConfigItem.new(key: :tvos_available,
+                                      env_name: "FRAMEWORK_TVOS_AVAILABLE",
                                       is_string: false,
                                       default_value: true),
-          FastlaneCore::ConfigItem.new(key: :osx,
-                                       env_name: "EDIT_XCODEPROJ_OSX",
+          FastlaneCore::ConfigItem.new(key: :osx_available,
+                                       env_name: "FRAMEWORK_OSX_AVAILABLE",
                                        is_string: false,
                                        default_value: true)
         ]

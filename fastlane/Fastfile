@@ -7,29 +7,12 @@ import_from_git(
   branch: "develop"
 )
 
-lane :test do |options|
-
-  prepare_lane_options(
-    options: options,
-    mapping: {
-      :xcworkspace => {:env_var => "XCWORKSPACE"}
-    }
-  )
-  workspace = Xcodeproj::Workspace.new_from_xcworkspace(options[:xcworkspace])
-  all_xcodeproj_map = Hash[workspace.file_references.map { |key| [File.basename(key.path, ".xcodeproj"), key] }]
-  print workspace.document
-  print all_xcodeproj_map["DGFrameworkTemplateSample-OSX"].to_node
-  workspace.document..delete_element(all_xcodeproj_map["DGFrameworkTemplateSample-OSX"].to_node)
-  ##workspace.document.delete_element("/Workspace/FileRef[@location=\"group:Samples/DGFrameworkTemplateSample-OSX/DGFrameworkTemplateSample-OSX.xcodeproj\"]")
-  print workspace.document
-#  workspace.save_as(options[:xcworkspace])
-end
-
 lane :bootstrap do |options|
   prepare_lane_options(
     options: options,
     mapping: {
       :xcodeproj => {:env_var => "XCODEPROJ"},
+      :xcworkspace => {:env_var => "XCWORKSPACE"},
       :podspec => {:env_var => "PODSPEC"}
     }
   )
@@ -119,10 +102,17 @@ lane :bootstrap do |options|
       )
       edit_xcodeproj(
         xcodeproj: project_info[:xcodeproj],
-        ios: ios != nil,
-        watchos: watchos != nil,
-        tvos: tvos != nil,
-        osx: osx != nil
+        ios_available: ios != nil,
+        watchos_available: watchos != nil,
+        tvos_available: tvos != nil,
+        osx_available: osx != nil
+      )
+      edit_xcworkspace(
+        xcworkspace: options[:xcworkspace],
+        ios_available: ios != nil,
+        watchos_available: watchos != nil,
+        tvos_available: tvos != nil,
+        osx_available: osx != nil
       )
     else
       UI.user_error! "No project found"
