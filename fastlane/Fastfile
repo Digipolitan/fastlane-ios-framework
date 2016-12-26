@@ -1,12 +1,3 @@
-import_from_git(
-  url: 'https://github.com/Digipolitan/fastlane-common',
-  branch: "develop"
-)
-import_from_git(
-  url: 'https://github.com/Digipolitan/fastlane-ios',
-  branch: "develop"
-)
-
 lane :bootstrap do |options|
   prepare_lane_options(
     options: options,
