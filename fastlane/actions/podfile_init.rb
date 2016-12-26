@@ -49,7 +49,6 @@ module Fastlane
         data.push(self.target_to_s(frameworks_target))
         data.push(self.target_to_s(tests_target))
         data.push(self.target_to_s(samples_target))
-        print data.join("\n")
         File.open(podfile_path, "w") { |file|
            file.puts(data.join("\n"))
         }
@@ -123,36 +122,6 @@ module Fastlane
         end
         parent_target[:targets].push(child_target)
       end
-
-      # def self.create_target_group(name, platforms, comments = nil, project_path = nil)
-      #   data = ""
-      #   if comments != nil
-      #     data += "## #{comments}\n"
-      #   end
-      #   data += "abstract_target \"#{name}\" do\n"
-      #   data += "\tuse_frameworks!\n\n"
-      #   targets = []
-      #   platforms.each { |platform, min_deployment|
-      #     project = nil
-      #     if project_path != nil
-      #       project = File.join(project_path, "#{name}-#{platform}", "#{name}-#{platform}")
-      #     end
-      #     targets.push(self.create_target(name, platform, min_deployment, project))
-      #   }
-      #   data += targets.join("\n")
-      #   data += "end\n"
-      #   return data
-      # end
-
-      #def self.create_target(project_name, platform, min_deployment, project = nil)
-      #  data = "\ttarget '#{project_name}-#{platform}' do\n"
-      #  if project != nil
-      #    data += "\t\tproject '#{project}'\n"
-      #  end
-      #  data += "\t\tplatform :#{platform.downcase}, '#{min_deployment}'\n"
-      #  data += "\tend\n"
-      #  return data
-      #end
 
       #####################################################
       # @!group Documentation

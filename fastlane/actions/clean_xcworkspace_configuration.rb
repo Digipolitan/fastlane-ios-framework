@@ -69,6 +69,7 @@ module Fastlane
         [
           FastlaneCore::ConfigItem.new(key: :xcworkspace,
                                        env_name: "XCWORKSPACE",
+                                       optional: true,
                                        description: "The workspace path"),
           FastlaneCore::ConfigItem.new(key: :ios_available,
                                        env_name: "FRAMEWORK_IOS_AVAILABLE",
