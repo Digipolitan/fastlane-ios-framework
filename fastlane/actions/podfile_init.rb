@@ -3,38 +3,61 @@ module Fastlane
     module SharedValues
     end
 
-    class EditPodfileAction < Action
+    class PodfileInitAction < Action
       def self.run(params)
         xcodeproj = params[:xcodeproj]
         project_name = File.basename(xcodeproj, ".xcodeproj")
-        test_project_name = "#{project_name}Tests"
         podfile_path = File.join(File.dirname(xcodeproj), "Podfile")
-        data = []
+        platforms = {}
         if ios_deployment_target = params[:ios_deployment_target]
-          data.push(create_target(project_name, "iOS", ios_deployment_target))
-          data.push(create_target(test_project_name, "iOS", ios_deployment_target))
+          platforms["iOS"] = ios_deployment_target
         end
         if watchos_deployment_target = params[:watchos_deployment_target]
-          data.push(create_target(project_name, "watchOS", watchos_deployment_target))
+          platforms["watchOS"] = watchos_deployment_target
         end
         if tvos_deployment_target = params[:tvos_deployment_target]
-          data.push(create_target(project_name, "tvOS", tvos_deployment_target))
-          data.push(create_target(test_project_name, "tvOS", tvos_deployment_target))
+          platforms["tvOS"] = tvos_deployment_target
         end
         if osx_deployment_target = params[:osx_deployment_target]
-          data.push(create_target(project_name, "OSX", osx_deployment_target))
-          data.push(create_target(test_project_name, "OSX", osx_deployment_target))
+          platforms["OSX"] = osx_deployment_target
         end
+        data = []
+        data.push("workspace '#{project_name}.xcworkspace'\n")
+        data.push(self.create_target_group(project_name, platforms, "Framework targets"))
+        data.push(self.create_target_group("#{project_name}Tests", platforms, "Tests targets"))
+        data.push(self.create_target_group("#{project_name}Sample", platforms, "Samples targets", "Samples"))
         File.open(podfile_path, "w") { |file|
           file.puts(data.join("\n"))
         }
       end
 
-      def self.create_target(project_name, platform, min_deployment)
-        data = "target '#{project_name}-#{platform}' do\n"
-        data += "\tuse_frameworks!\n"
-        data += "\tplatform :#{platform.downcase}, '#{min_deployment}'\n"
+      def self.create_target_group(name, platforms, comments = nil, project_path = nil)
+        data = ""
+        if comments != nil
+          data += "## #{comments}\n"
+        end
+        data += "abstract_target \"#{name}\" do\n"
+        data += "\tuse_frameworks!\n\n"
+        targets = []
+        platforms.each { |platform, min_deployment|
+          project = nil
+          if project_path != nil
+            project = File.join(project_path, "#{name}-#{platform}", "#{name}-#{platform}")
+          end
+          targets.push(self.create_target(name, platform, min_deployment, project))
+        }
+        data += targets.join("\n")
         data += "end\n"
+        return data
+      end
+
+      def self.create_target(project_name, platform, min_deployment, project = nil)
+        data = "\ttarget '#{project_name}-#{platform}' do\n"
+        if project != nil
+          data += "\t\tproject '#{project}'\n"
+        end
+        data += "\t\tplatform :#{platform.downcase}, '#{min_deployment}'\n"
+        data += "\tend\n"
         return data
       end
 
@@ -43,7 +66,7 @@ module Fastlane
       #####################################################
 
       def self.description
-        "Edit the generated Podfile with your configuration"
+        "Init a Podfile with your configuration"
       end
 
       def self.available_options

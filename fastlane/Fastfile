@@ -78,7 +78,7 @@ lane :bootstrap do |options|
       if company = Actions.lane_context[:PODSPEC_COMPANY]
         authors.push(company)
       end
-      edit_podspec(
+      podspec_init(
         podspec: options[:podspec],
         pod_name: framework_name,
         version: get_version_number(
@@ -93,21 +93,21 @@ lane :bootstrap do |options|
         tvos_deployment_target: tvos,
         watchos_deployment_target: watchos
       )
-      edit_podfile(
+      podfile_init(
         xcodeproj: project_info[:xcodeproj],
         ios_deployment_target: ios,
         osx_deployment_target: osx,
         tvos_deployment_target: tvos,
         watchos_deployment_target: watchos
       )
-      edit_xcodeproj(
+      clean_xcodeproj_configuration(
         xcodeproj: project_info[:xcodeproj],
         ios_available: ios != nil,
         watchos_available: watchos != nil,
         tvos_available: tvos != nil,
         osx_available: osx != nil
       )
-      edit_xcworkspace(
+      clean_xcworkspace_configuration(
         xcworkspace: options[:xcworkspace],
         ios_available: ios != nil,
         watchos_available: watchos != nil,
@@ -118,6 +118,7 @@ lane :bootstrap do |options|
       UI.user_error! "No project found"
     end
   end
+  UI.success "Framework successfully initialized"
 end
 
 desc "Start new framework release version on your git repository"

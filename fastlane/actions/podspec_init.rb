@@ -3,7 +3,7 @@ module Fastlane
     module SharedValues
     end
 
-    class EditPodspecAction < Action
+    class PodspecInitAction < Action
       def self.run(params)
         podspec = params[:podspec]
         if podspec == nil
@@ -66,7 +66,7 @@ module Fastlane
       #####################################################
 
       def self.description
-        "Edit the generated podspec with your configuration"
+        "Init a podspec with your configuration"
       end
 
       def self.available_options

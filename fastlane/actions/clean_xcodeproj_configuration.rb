@@ -3,7 +3,7 @@ module Fastlane
     module SharedValues
     end
 
-    class EditXcodeprojAction < Action
+    class CleanXcodeprojConfigurationAction < Action
       def self.run(params)
         xcodeproj = params[:xcodeproj]
         project_name = File.basename(xcodeproj, ".xcodeproj")
@@ -43,7 +43,7 @@ module Fastlane
       #####################################################
 
       def self.description
-        "Edit the generated Xcode project with your configuration"
+        "Removes unused targets, schemes from the Xcode project"
       end
 
       def self.available_options

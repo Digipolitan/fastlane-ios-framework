@@ -3,7 +3,7 @@ module Fastlane
     module SharedValues
     end
 
-    class EditXcworkspaceAction < Action
+    class CleanXcworkspaceConfigurationAction < Action
       def self.run(params)
         xcworkspace = params[:xcworkspace]
         workspace = Xcodeproj::Workspace.new_from_xcworkspace(xcworkspace)
@@ -54,7 +54,7 @@ module Fastlane
       #####################################################
 
       def self.description
-        "A short description with <= 80 characters of what this action does"
+        "Remove unused project from the Xcode workspace"
       end
 
       def self.available_options
