@@ -6,6 +6,14 @@ module Fastlane
     class CleanXcworkspaceConfigurationAction < Action
       def self.run(params)
         xcworkspace = params[:xcworkspace]
+        if xcworkspace == nil
+          if (files = Dir["*.xcworkspace"]) != nil && files.length > 0
+            xcworkspace = files.first
+          end
+          if xcworkspace == nil
+            UI.user_error! "xcworkspace cannot be found"
+          end
+        end
         workspace = Xcodeproj::Workspace.new_from_xcworkspace(xcworkspace)
         all_xcodeprojs_map = Hash[workspace.file_references.map { |key| [File.basename(key.path, ".xcodeproj"), key] }]
         project_name = File.basename(xcworkspace, ".xcworkspace")
@@ -61,9 +69,7 @@ module Fastlane
         [
           FastlaneCore::ConfigItem.new(key: :xcworkspace,
                                        env_name: "XCWORKSPACE",
-                                       description: "The workspace path",
-                                       verify_block: proc do |value|
-                                       end),
+                                       description: "The workspace path"),
           FastlaneCore::ConfigItem.new(key: :ios_available,
                                        env_name: "FRAMEWORK_IOS_AVAILABLE",
                                        is_string: false,

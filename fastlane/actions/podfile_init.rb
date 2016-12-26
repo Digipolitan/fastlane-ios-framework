@@ -8,58 +8,151 @@ module Fastlane
         xcodeproj = params[:xcodeproj]
         project_name = File.basename(xcodeproj, ".xcodeproj")
         podfile_path = File.join(File.dirname(xcodeproj), "Podfile")
-        platforms = {}
+        frameworks_target = self.create_target("Frameworks", true, nil, nil, "Frameworks targets")
+        tests_target = self.create_target("Tests", true, nil, nil, "Tests targets")
+        samples_target = self.create_target("Samples", true, nil, nil, "Samples targets")
         if ios_deployment_target = params[:ios_deployment_target]
-          platforms["iOS"] = ios_deployment_target
+          self.link_platform(project_name, {
+            name: "iOS",
+            version: ios_deployment_target
+            }, frameworks_target, tests_target, samples_target)
         end
         if watchos_deployment_target = params[:watchos_deployment_target]
-          platforms["watchOS"] = watchos_deployment_target
+          platform = {
+            name: "watchOS",
+            version: watchos_deployment_target
+          }
+          self.link_platform(project_name, platform, frameworks_target)
+          sample_name = "#{project_name}Sample-#{platform[:name]}"
+          watch_wrapper = self.create_target("watchOS", false, nil, File.join("Samples", sample_name, sample_name))
+          self.link_target(samples_target, watch_wrapper)
+          self.link_target(watch_wrapper, self.create_target(sample_name, false, {
+            name: 'iOS',
+            version: '8.0'
+            }))
+          self.link_target(watch_wrapper, self.create_target("#{sample_name} WatchKit Extension", false, platform))
         end
         if tvos_deployment_target = params[:tvos_deployment_target]
-          platforms["tvOS"] = tvos_deployment_target
+          self.link_platform(project_name, {
+            name: "tvOS",
+            version: tvos_deployment_target
+            }, frameworks_target, tests_target, samples_target)
         end
         if osx_deployment_target = params[:osx_deployment_target]
-          platforms["OSX"] = osx_deployment_target
+          self.link_platform(project_name, {
+            name: "OSX",
+            version: osx_deployment_target
+            }, frameworks_target, tests_target, samples_target)
         end
         data = []
         data.push("workspace '#{project_name}.xcworkspace'\n")
-        data.push(self.create_target_group(project_name, platforms, "Framework targets"))
-        data.push(self.create_target_group("#{project_name}Tests", platforms, "Tests targets"))
-        data.push(self.create_target_group("#{project_name}Sample", platforms, "Samples targets", "Samples"))
+        data.push(self.target_to_s(frameworks_target))
+        data.push(self.target_to_s(tests_target))
+        data.push(self.target_to_s(samples_target))
+        print data.join("\n")
         File.open(podfile_path, "w") { |file|
-          file.puts(data.join("\n"))
+           file.puts(data.join("\n"))
         }
       end
 
-      def self.create_target_group(name, platforms, comments = nil, project_path = nil)
+      def self.target_to_s(target, depth = 0)
+        tab = "\t" * depth
+        child_depth = depth + 1
+        child_tab = "\t" * child_depth
+        keyword = target[:targets] != nil ? "abstract_target" : "target"
         data = ""
-        if comments != nil
-          data += "## #{comments}\n"
+        if comments = target[:comments]
+          data = "#{tab}## #{comments}\n"
         end
-        data += "abstract_target \"#{name}\" do\n"
-        data += "\tuse_frameworks!\n\n"
-        targets = []
-        platforms.each { |platform, min_deployment|
-          project = nil
-          if project_path != nil
-            project = File.join(project_path, "#{name}-#{platform}", "#{name}-#{platform}")
-          end
-          targets.push(self.create_target(name, platform, min_deployment, project))
-        }
-        data += targets.join("\n")
-        data += "end\n"
+        data += "#{tab}#{keyword} '#{target[:name]}' do\n"
+        if project = target[:project]
+          data += "#{child_tab}project '#{project}'\n"
+        end
+        if target[:use_frameworks]
+          data += "#{child_tab}use_frameworks!\n"
+        end
+        if platform_name = target[:platform] and min_deployment = target[:min_deployment]
+          data += "#{child_tab}platform :#{platform_name.downcase}, '#{min_deployment}'\n"
+        end
+        if child_targets = target[:targets]
+          builder = []
+          child_targets.each { |child_target|
+            builder.push(self.target_to_s(child_target, child_depth))
+          }
+          data += builder.join("\n")
+        end
+        data += "#{tab}end\n"
         return data
       end
 
-      def self.create_target(project_name, platform, min_deployment, project = nil)
-        data = "\ttarget '#{project_name}-#{platform}' do\n"
-        if project != nil
-          data += "\t\tproject '#{project}'\n"
+      def self.link_platform(project_name, platform, frameworks_target, tests_target = nil, samples_target = nil)
+        platform_name = platform[:name]
+        self.link_target(frameworks_target, self.create_target("#{project_name}-#{platform_name}", false, platform))
+        if tests_target != nil
+          self.link_target(tests_target, self.create_target("#{project_name}Tests-#{platform_name}", false, platform))
         end
-        data += "\t\tplatform :#{platform.downcase}, '#{min_deployment}'\n"
-        data += "\tend\n"
-        return data
+        if samples_target != nil
+          sample_name = "#{project_name}Sample-#{platform_name}"
+          self.link_target(samples_target, self.create_target(sample_name, false, platform, File.join("Samples", sample_name, sample_name)))
+        end
       end
+
+      def self.create_target(name, use_frameworks = true, platform = nil, project = nil, comments = nil)
+        target = {
+          name: name
+        }
+        if use_frameworks == true
+          target[:use_frameworks] = use_frameworks
+        end
+        if platform != nil
+          target[:platform] = platform[:name]
+          target[:min_deployment] = platform[:version]
+        end
+        if project != nil
+          target[:project] = project
+        end
+        if comments != nil
+          target[:comments] = comments
+        end
+        return target
+      end
+
+      def self.link_target(parent_target, child_target)
+        if parent_target[:targets] == nil
+          parent_target[:targets] = []
+        end
+        parent_target[:targets].push(child_target)
+      end
+
+      # def self.create_target_group(name, platforms, comments = nil, project_path = nil)
+      #   data = ""
+      #   if comments != nil
+      #     data += "## #{comments}\n"
+      #   end
+      #   data += "abstract_target \"#{name}\" do\n"
+      #   data += "\tuse_frameworks!\n\n"
+      #   targets = []
+      #   platforms.each { |platform, min_deployment|
+      #     project = nil
+      #     if project_path != nil
+      #       project = File.join(project_path, "#{name}-#{platform}", "#{name}-#{platform}")
+      #     end
+      #     targets.push(self.create_target(name, platform, min_deployment, project))
+      #   }
+      #   data += targets.join("\n")
+      #   data += "end\n"
+      #   return data
+      # end
+
+      #def self.create_target(project_name, platform, min_deployment, project = nil)
+      #  data = "\ttarget '#{project_name}-#{platform}' do\n"
+      #  if project != nil
+      #    data += "\t\tproject '#{project}'\n"
+      #  end
+      #  data += "\t\tplatform :#{platform.downcase}, '#{min_deployment}'\n"
+      #  data += "\tend\n"
+      #  return data
+      #end
 
       #####################################################
       # @!group Documentation

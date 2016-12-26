@@ -52,6 +52,8 @@ module Fastlane
                                        env_name: "XCODEPROJ",
                                        optional: false,
                                        verify_block: proc do |value|
+                                         UI.user_error!("Please pass the path to the project, not the workspace") if value.end_with? ".xcworkspace"
+                                         UI.user_error!("Could not find Xcode project") if !File.exist?(value) and !Helper.is_test?
                                        end),
           FastlaneCore::ConfigItem.new(key: :ios_available,
                                        env_name: "FRAMEWORK_IOS_AVAILABLE",
