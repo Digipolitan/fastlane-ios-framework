@@ -280,7 +280,7 @@ lane :publish_framework_release do |options|
     scheme: options[:scheme],
     skip_slack:true
   )
-  message = options[:message] != nil ? options[:message] : "Release version #{version_number}"
+  message = options[:message] != nil ? options[:message] : "#{version_number}"
   git_flow_release(
     action: "finish",
     name: version_number,
