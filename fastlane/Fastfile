@@ -168,12 +168,12 @@ lane :start_framework_release do |options|
   prepare_lane_options(
     options: options,
     bind_params: [
-      Actions::BindParam.optional(:xcodeproj, nil, "XCODEPROJ"),
-      Actions::BindParam.optional(:target_version, nil, "TARGET_VERSION"),
-      Actions::BindParam.optional(:podspec_path, nil, "PODSPEC_PATH"),
-      Actions::BindParam.optional(:product_name, nil, "PRODUCT_NAME"),
-      Actions::BindParam.optional(:changelog_release_url, nil, "CHANGELOG_RELEASE_URL"),
-      Actions::BindParam.optional(:changelog_content, nil, "CHANGELOG_CONTENT")
+      Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
+      Actions::BindParamBuilder.new(:target_version).env_var("TARGET_VERSION").build(),
+      Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build(),
+      Actions::BindParamBuilder.new(:product_name).env_var("PRODUCT_NAME").build(),
+      Actions::BindParamBuilder.new(:changelog_release_url).env_var("CHANGELOG_RELEASE_URL").build(),
+      Actions::BindParamBuilder.new(:changelog_content).env_var("CHANGELOG_CONTENT").build()
     ]
   )
   develop_branch = git_get_develop_branch()
