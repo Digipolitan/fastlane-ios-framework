@@ -5,15 +5,12 @@ module Fastlane
 
     class PodspecInitAction < Action
       def self.run(params)
-        podspec = params[:podspec]
-        if podspec == nil
-          if (xcodeproj = Dir["*.xcodeproj"]) != nil && xcodeproj.length > 0
-            podspec = File.basename(xcodeproj.first, ".xcodeproj")
-          end
-          if podspec == nil
-            UI.user_error! "Podspec cannot be found"
+        podspec_path = params[:podspec_path]
+        if podspec_path == nil
+          if (podspec = Dir["*.podspec"]) != nil && podspec.length > 0
+            podspec_path = podspec.first
           else
-            podspec = "#{podspec}.podspec"
+            UI.user_error! "The Podspec file cannot be found"
           end
         end
         data = "Pod::Spec.new do |s|\n";
@@ -71,8 +68,8 @@ module Fastlane
 
       def self.available_options
         [
-          FastlaneCore::ConfigItem.new(key: :podspec,
-                                       env_name: "PODSPEC",
+          FastlaneCore::ConfigItem.new(key: :podspec_path,
+                                       env_name: "PODSPEC_PATH",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :pod_name,
                                        env_name: "POD_NAME"),
