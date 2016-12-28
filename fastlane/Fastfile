@@ -363,7 +363,7 @@ desc "* __**github_token**__: The GitHub access token use to push the release to
 desc "  * **environment_variable**: GITHUB_TOKEN"
 desc "  * **type**: string"
 desc "  * **optional**: false"
-desc "* __**repository_name**__: The GitHub repository name such as 'company/project'"
+desc "* __**github_repository_name**__: The GitHub repository name such as 'company/project'"
 desc "  * **environment_variable**: GITHUB_REPOSITORY_NAME"
 desc "  * **type**: string"
 desc "  * **optional**: false"
@@ -387,7 +387,7 @@ lane :framework_deploy_github do |options|
     options: options,
     bind_params: [
       Actions::BindParamBuilder.new(:github_token).env_var("GITHUB_TOKEN").required().build(),
-      Actions::BindParamBuilder.new(:repository_name).env_var("GITHUB_REPOSITORY_NAME").required().build(),
+      Actions::BindParamBuilder.new(:github_repository_name).env_var("GITHUB_REPOSITORY_NAME").required().build(),
       Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
       Actions::BindParamBuilder.new(:skip_carthage).default_value(false).build(),
       Actions::BindParamBuilder.new(:skip_codecov).default_value(false).build()
@@ -411,7 +411,7 @@ lane :framework_deploy_github do |options|
         changelog = changelog_from_git_commits()
       end
       set_github_release(
-        repository_name: options[:repository_name],
+        repository_name: options[:github_repository_name],
         name: version_number,
         api_token: options[:github_token],
         tag_name: tag,

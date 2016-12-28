@@ -292,7 +292,7 @@ import_from_git(
 
   * **optional**: false
 
-* __**repository_name**__: The GitHub repository name such as 'company/project'
+* __**github_repository_name**__: The GitHub repository name such as 'company/project'
 
   * **environment_variable**: GITHUB_REPOSITORY_NAME
 
