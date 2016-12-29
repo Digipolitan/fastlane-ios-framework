@@ -11,15 +11,15 @@ module Fastlane
         end
 
         if params[:allow_warnings]
-          command << "--allow-warnings"
+          cmd << "--allow-warnings"
         end
 
         if params[:use_libraries]
-          command << "--use-libraries"
+          cmd << "--use-libraries"
         end
 
         if params[:verbose]
-          command << "--verbose"
+          cmd << "--verbose"
         end
 
         Actions.sh(cmd.join(" "))
