@@ -1,39 +1,173 @@
+desc "Initialize the framework to be use with fastlane"
+desc "#### How to install ?"
+desc "This lane require actions define in [Digipolitan/fastlane-common](https://github.com/Digipolitan/fastlane-common) and lane define in [Digipolitan/fastlane-ios](https://github.com/Digipolitan/fastlane-ios)"
+desc "```\nimport_from_git(\n  url: 'https://github.com/Digipolitan/fastlane-common'\n)\nimport_from_git(\n  url: 'https://github.com/Digipolitan/fastlane-ios'\n)\n```"
+desc "#### Options"
+desc "* __**xcodeproj**__: The Xcode project path, if the project isn't in your root directory"
+desc "  * **environment_variable**: XCODEPROJ"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "* __**xcworkspace**__: The Xcode workspace path, if the workspace isn't in your root directory"
+desc "  * **environment_variable**: XCWORKSPACE"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "* __**podspec_path**__: The podspec path if specific"
+desc "  * **environment_variable**: PODSPEC_PATH"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods"
+desc "  * **environment_variable**: SKIP_COCOAPODS"
+desc "  * **type**: string"
+desc "  * **default_value**: false"
+desc ""
+lane :framework_bootstrap do |options|
+  prepare_lane_options(
+    options: options,
+    bind_params: [
+      Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
+      Actions::BindParamBuilder.new(:xcworkspace).env_var("XCWORKSPACE").build(),
+      Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build(),
+      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").default_value(false).build()
+    ]
+  )
+  appfile_init(
+    xcodeproj: options[:xcodeproj],
+    fetch_apple_id: 0,
+    fetch_team_name: 0,
+    fetch_itc_team_name: 0
+  )
+  if UI.confirm("Would you like to reset the project's version ?")
+    increment_version_number(
+      xcodeproj: options[:xcodeproj],
+      version_number: "1.0.0"
+    )
+    increment_build_number(
+      xcodeproj: options[:xcodeproj],
+      build_number: "1"
+    )
+  end
+  if UI.confirm("Would you like to edit the project's configuration ?")
+    project_info = get_project_info(xcodeproj: options[:xcodeproj])
+    if framework_name = project_info[:name]
+      ios_deployment_target = UI.confirm("Is your framework compatible iOS ?") ? '8.0' : nil
+      watchos_deployment_target = UI.confirm("Is your framework compatible wathOS ?") ? '2.0' : nil
+      tvos_deployment_target = UI.confirm("Is your framework compatible tvOS ?") ? '9.0' : nil
+      osx_deployment_target = UI.confirm("Is your framework compatible OSX ?") ? '10.9' : nil
+      clean_xcodeproj_configuration(
+        xcodeproj: project_info[:xcodeproj],
+        ios_available: ios_deployment_target != nil,
+        watchos_available: watchos_deployment_target != nil,
+        tvos_available: tvos_deployment_target != nil,
+        osx_available: osx_deployment_target != nil
+      )
+      clean_xcworkspace_configuration(
+        xcworkspace: options[:xcworkspace],
+        ios_available: ios_deployment_target != nil,
+        watchos_available: watchos_deployment_target != nil,
+        tvos_available: tvos_deployment_target != nil,
+        osx_available: osx_deployment_target != nil
+      )
+      podfile_init(
+        xcodeproj: project_info[:xcodeproj],
+        ios_deployment_target: ios_deployment_target,
+        osx_deployment_target: osx_deployment_target,
+        tvos_deployment_target: tvos_deployment_target,
+        watchos_deployment_target: watchos_deployment_target
+      )
+      if (options[:skip_cocoapods] != true) and UI.confirm("Would you like to prepare the framework to CocoaPods ?")
+        podspec_info = {}
+        if remote_info = git_get_remote_info()
+          podspec_info[:host] = remote_info[:host]
+          if path = remote_info[:path]
+            podspec_info[:homepage] = "https://#{podspec_info[:host]}/#{path}"
+            podspec_info[:git_url] = "#{podspec_info[:homepage]}.git"
+            if i = path.index('/')
+              podspec_info[:company] = path[0, i]
+              i += 1
+              podspec_info[:identifier] = path[i, path.length - i]
+            end
+          end
+        end
+        user_validation(
+          bind_params: [
+            Actions::BindParamBuilder.new("Git URL").lane_context(:PODSPEC_GIT_URL).default_value(podspec_info[:git_url]).required().build(),
+            Actions::BindParamBuilder.new("Homepage").lane_context(:PODSPEC_HOMEPAGE).default_value(podspec_info[:homepage]).build(),
+            Actions::BindParamBuilder.new("Company").lane_context(:PODSPEC_COMPANY).default_value(podspec_info[:company]).build(),
+            Actions::BindParamBuilder.new("Project identifier").lane_context(:PODSPEC_IDENTIFIER).default_value(podspec_info[:identifier]).required().build()
+          ]
+        )
+        authors = []
+        if company = Actions.lane_context[:PODSPEC_COMPANY]
+          authors.push(company)
+        end
+        podspec_init(
+          path: options[:podspec_path],
+          pod_name: framework_name,
+          version: get_version_number(
+            xcodeproj: project_info[:xcodeproj]
+          ),
+          summary: "This is a summary.",
+          homepage: Actions.lane_context[:PODSPEC_HOMEPAGE],
+          git_url: Actions.lane_context[:PODSPEC_GIT_URL],
+          authors: authors,
+          ios_deployment_target: ios_deployment_target,
+          osx_deployment_target: osx_deployment_target,
+          tvos_deployment_target: tvos_deployment_target,
+          watchos_deployment_target: watchos_deployment_target
+        )
+      else
+        podspec_path = options[:podspec_path]
+        if podspec_path == nil
+          if files = files_matching(pattern: "*.podspec")
+            podspec_path = files.first
+          end
+        end
+        if podspec_path != nil
+          File.delete(podspec_path)
+        end
+      end
+    else
+      UI.user_error! "No project found, you must pass a valid xcodeproj path"
+    end
+  end
+  UI.success "Framework successfully initialized"
+end
+
 desc "Start new framework release version on your git repository"
 desc "This lane require **git flow** installed in your framework directory check documentation [here](https://github.com/nvie/gitflow)"
-desc "You will automatically be switched to release/X.X.X branch after this lane and your project/podsec version will be updated"
+desc "You will automatically be switched to release/X.X.X branch after this lane and your xcodeproj / podsec version will be updated"
 desc "#### How to install ?"
 desc "This lane require actions define in [Digipolitan/fastlane-common](https://github.com/Digipolitan/fastlane-common)"
 desc "```\nimport_from_git(\n  url: 'https://github.com/Digipolitan/fastlane-common'\n)\n```"
 desc "#### Example using specific version:"
-desc "```\nfastlane start_framework_release version:4.0.9\n```"
+desc "```\nfastlane start_framework_release target_version:4.0.9\n```"
 desc "#### Options"
-desc "* **bump_type**: The type of this version bump. Available: patch, minor, major"
-desc "  * **environment_variable**: DG_BUMP_TYPE"
+desc "* __**xcodeproj**__: The Xcode project path, if the project isn't in your root directory"
+desc "  * **environment_variable**: XCODEPROJ"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "  * **default_value**: patch"
-desc "* **version**: Change to a specific version. This will replace the bump type value"
-desc "  * **environment_variable**: DG_RELEASE_VERSION"
-desc "  * **type**: string"
-desc "  * **optional**: true, **automatically patch** release version to the next number (1.0.0 --> 1.0.1)"
-desc "* **project**: The project path."
-desc "  * **environment_variable**: DG_PROJECT"
+desc "* __**target_version**__: Change to a specific version."
+desc "  * **environment_variable**: TARGET_VERSION"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "* **podspec_path**: The podspec path if specific."
-desc "  * **environment_variable**: DG_PODSPEC_PATH"
+desc "* __**podspec_path**__: The podspec path if specific"
+desc "  * **environment_variable**: PODSPEC_PATH"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "* **product_name**: The framework name"
-desc "  * **environment_variable**: DG_PRODUCT_NAME"
+desc "* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods"
+desc "  * **environment_variable**: SKIP_COCOAPODS"
+desc "  * **type**: string"
+desc "  * **default_value**: false"
+desc "* __**product_name**__: The framework name, by default retrieve the product name on the .git/config file"
+desc "  * **environment_variable**: PRODUCT_NAME"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "* **release_url**: The release url use by the changelog"
-desc "  * **environment_variable**: DG_RELEASE_URL"
+desc "* __**changelog_release_url**__: The release url use by the changelog"
+desc "  * **environment_variable**: CHANGELOG_RELEASE_URL"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "* **change_log**: The changelog content"
-desc "  * **environment_variable**: DG_CHANGELOG_CONTENT"
+desc "* __**changelog_content**__: The changelog content, by default retrieves commits"
+desc "  * **environment_variable**: CHANGELOG_CONTENT"
 desc "  * **type**: string"
 desc "  * **optional**: true"
 desc ""
@@ -42,55 +176,62 @@ lane :start_framework_release do |options|
   ensure_git_flow_init()
   prepare_lane_options(
     options: options,
-    mapping: {
-      :version => {:env_var => "DG_RELEASE_VERSION"},
-      :podspec_path => {:env_var => "DG_PODSPEC_PATH"},
-      :project => {:env_var => "DG_PROJECT"},
-      :product_name => {:env_var => "DG_PRODUCT_NAME"},
-      :bump_type => {:env_var => "DG_BUMP_TYPE"},
-      :release_url => {:env_var => "DG_RELEASE_URL"},
-      :change_log => {:env_var => "DG_CHANGELOG_CONTENT"}
-    }
+    bind_params: [
+      Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
+      Actions::BindParamBuilder.new(:target_version).env_var("TARGET_VERSION").build(),
+      Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build(),
+      Actions::BindParamBuilder.new(:product_name).env_var("PRODUCT_NAME").build(),
+      Actions::BindParamBuilder.new(:changelog_release_url).env_var("CHANGELOG_RELEASE_URL").build(),
+      Actions::BindParamBuilder.new(:changelog_content).env_var("CHANGELOG_CONTENT").build(),
+      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").default_value(false).build()
+    ]
   )
-  release_version = options[:version]
-  bump_type = options[:bump_type]
-  if release_version == nil
-    version_number = get_version_number(xcodeproj: options[:project])
-    version_number_arr = version_number.split(".").map(&:to_i)
-    if version_number_arr.length >= 2
-      if bump_type == nil || bump_type == "patch"
-        version_number_arr[2] = version_number_arr[2] + 1
-      elsif bump_type == "minor"
-        version_number_arr[1] = version_number_arr[1] + 1
-      elsif bump_type == "major"
-        version_number_arr[0] = version_number_arr[0] + 1
-      else
-        UI.user_error! "Invalid bump type '#{bump_type}', only patch, minor, major are available"
-      end
-      release_version = version_number_arr.join(".")
-    else
-      UI.user_error! "The project version is invalid '#{version_number}'"
+  develop_branch = git_get_develop_branch()
+  if git_branch() != develop_branch
+    UI.user_error! "You must run this lane on the '#{develop_branch}' only"
+  end
+  version_number = get_version_number(xcodeproj: options[:xcodeproj])
+  build_number = get_build_number(xcodeproj: options[:xcodeproj])
+  prefix_versiontag = Actions.lane_context[SharedValues::GIT_FLOW_VERSIONTAG_PREFIX]
+  git_version_availability(
+    version_number: options[:target_version] != nil ? options[:target_version] : version_number,
+    build_number: options[:target_version] != nil ? "1" : build_number,
+    prefix_versiontag: prefix_versiontag
+  )
+  next_version_number = Actions.lane_context[SharedValues::NEXT_VERSION_NUMBER]
+  next_build_number = Actions.lane_context[SharedValues::NEXT_BUILD_NUMBER]
+  begin
+    git_flow_release(
+      action: "start",
+      name: next_version_number
+    )
+  rescue
+    UI.user_error! "Cannot start release '#{next_version_number}', you are probably starting the current release version\n\
+    * if you want to publish the release use the lane : 'publish_framework_release'"
+  end
+  if next_version_number != version_number || next_build_number != build_number
+    increment_version_number(
+      xcodeproj: options[:xcodeproj],
+      version_number: next_version_number
+    )
+    increment_build_number(
+      xcodeproj: options[:xcodeproj],
+      build_number: next_build_number
+    )
+    if options[:skip_cocoapods] != true
+      version_bump_podspec(
+        path: options[:podspec_path],
+        version_number: next_version_number
+      )
     end
+    git_commit(
+      path: ["."],
+      message: "Bumped release version '#{next_version_number}' build ##{next_build_number}"
+    )
   end
   git_flow_release(
-    action: "start",
-    name: release_version
-  )
-  increment_version_number(
-    xcodeproj: options[:project],
-    version_number: release_version
-  )
-  version_bump_podspec(
-    path: options[:podspec_path],
-    version_number: release_version
-  )
-  git_commit(
-    path: ["."],
-    message: "Bumped release version #{release_version}"
-  )
-  git_flow_release(
     action: "publish",
-    name: release_version
+    name: next_version_number
   )
   remote_info = git_get_remote_info()
   if options[:product_name] == nil
@@ -100,102 +241,115 @@ lane :start_framework_release do |options|
       end
     end
   end
-  if options[:change_log] == nil
-    options[:change_log] = changelog_from_git_commits()
+  if options[:changelog_content] == nil
+    options[:changelog_content] = changelog_from_git_commits()
   end
-  if options[:release_url] == nil
+  if options[:changelog_release_url] == nil
     host = remote_info[:host]
     path = remote_info[:path]
     if host == "github.com" && path != nil
-      options[:release_url] = "https://#{host}/#{path}/releases/tag/v#{release_version}"
+      options[:changelog_release_url] = "https://#{host}/#{path}/releases/tag/#{prefix_versiontag}#{next_version_number}"
     end
   end
   if options[:product_name] != nil
     new_changelog_version(
-      version: release_version,
+      version: next_version_number,
       product_name: options[:product_name],
-      url: options[:release_url],
-      content: options[:change_log]
+      url: options[:changelog_release_url],
+      content: options[:changelog_content]
     )
   end
-  UI.success "Release #{release_version} created"
+  UI.success "Release #{next_version_number} created.\nCheck the readme.md and the CHANGELOG.md after that when your framework is ready execute the lane 'publish_framework_release'"
 end
 
 desc "Submit the framework release version on your git repository and close the branch"
 desc "This lane require **git flow** installed in your framework directory check documentation [here](https://github.com/nvie/gitflow)"
-desc "You will automatically be switched to develop branch after this lane"
+desc "You will automatically be switched to your develop branch after this lane"
 desc "#### How to install ?"
 desc "This lane require actions define in [Digipolitan/fastlane-common](https://github.com/Digipolitan/fastlane-common)"
 desc "```\nimport_from_git(\n  url: 'https://github.com/Digipolitan/fastlane-common'\n)\n```"
 desc "#### Options"
-desc "* **message**: The commit message"
-desc "  * **environment_variable**: DG_RELEASE_MESSAGE"
+desc "* __**git_flow_release_message**__: The commit message"
+desc "  * **environment_variable**: GIT_FLOW_RELEASE_MESSAGE"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "  * **default_value**: Release version **VERSION**"
-desc "* **workspace**: The workspace to use."
-desc "  * **environment_variable**: DG_WORKSPACE"
+desc "  * **default_value**: Release version **VERSION_NUMBER**"
+desc "* __**xcworkspace**__: The Xcode workspace to use."
+desc "  * **environment_variable**: XCWORKSPACE"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "* **project**: The project path."
-desc "  * **environment_variable**: DG_PROJECT"
+desc "* __**xcodeproj**__: The Xcode project path."
+desc "  * **environment_variable**: XCODEPROJ"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "* **scheme**: The scheme into the workspace to test."
-desc "  * **environment_variable**: DG_SCHEME"
+desc "* __**test_scheme**__: The scheme into the Xcode project to execute"
+desc "  * **environment_variable**: TEST_SCHEME"
 desc "  * **type**: string"
 desc "  * **optional**: true"
+desc "* __**podspec_path**__: The podspec path if specific"
+desc "  * **environment_variable**: PODSPEC_PATH"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods"
+desc "  * **environment_variable**: SKIP_COCOAPODS"
+desc "  * **type**: string"
+desc "  * **default_value**: false"
 desc ""
-lane :submit_framework_release do |options|
+lane :publish_framework_release do |options|
   ensure_git_status_clean()
   ensure_git_flow_init()
   prepare_lane_options(
     options: options,
-    mapping: {
-      :workspace => {:env_var => "DG_WORKSPACE"},
-      :project => {:env_var => "DG_PROJECT"},
-      :scheme => {:env_var => "DG_SCHEME"},
-      :message => {:env_var => "DG_RELEASE_MESSAGE"}
-    }
+    bind_params: [
+      Actions::BindParamBuilder.new(:test_scheme).env_var("TEST_SCHEME").build(),
+      Actions::BindParamBuilder.new(:xcworkspace).env_var("XCWORKSPACE").build(),
+      Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
+      Actions::BindParamBuilder.new(:git_flow_release_message).env_var("GIT_FLOW_RELEASE_MESSAGE").build(),
+      Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build(),
+      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").default_value(false).build()
+    ]
   )
-  release_version = get_version_number(xcodeproj: options[:project])
+  if options[:skip_cocoapods] != true
+    podspec_lint(
+      path: options[:podspec_path],
+      allow_warnings: true,
+      verbose: true
+    )
+  end
+  version_number = get_version_number(xcodeproj: options[:xcodeproj])
   if changelog = get_changelog()
     UI.message "Check your change log content below :\n#{changelog}"
-    result = UI.confirm("Are you sure to submit the framework v#{release_version} with this changelog ?")
-    if !result
-      abort("Abort framework release")
+    if !UI.confirm("Are you sure to submit the framework v#{version_number} with this changelog ?")
+      UI.user_error! "User abort framework release"
     end
-  else
-    UI.error "Missing changelog content"
+  elsif !UI.confirm("Missing changelog content ! Continue ?")
+    UI.user_error! "User abort framework release"
   end
-  scan(
-    workspace: options[:workspace],
-    project: options[:project],
-    scheme: options[:scheme],
-    skip_slack:true
-  )
-  message = options[:message] != nil ? options[:message] : "Release version #{release_version}"
+  run_tests(options)
   git_flow_release(
     action: "finish",
-    name: release_version,
-    message: message
+    name: version_number,
+    message: options[:git_flow_release_message] != nil ? options[:git_flow_release_message] : "Release version #{version_number}"
   )
-  UI.success "Successfully submitted framework v#{release_version} to your repository"
+  UI.success "Successfully submitted framework v#{version_number} to your repository"
 end
 
 desc "CocoaPods deployment lane"
 desc "This lane must be run only on the **master** branch"
+desc "#### How to install ?"
+desc "This lane require actions define in [Digipolitan/fastlane-common](https://github.com/Digipolitan/fastlane-common)"
+desc "```\nimport_from_git(\n  url: 'https://github.com/Digipolitan/fastlane-common'\n)\n```"
 desc "#### Options"
-desc "* **podspec_path**: The podspec path"
-desc "  * **environment_variable**: DG_PODSPEC_PATH"
+desc "* __**podspec_path**__: The podspec path"
+desc "  * **environment_variable**: PODSPEC_PATH"
 desc "  * **type**: string"
 desc "  * **optional**: true"
 desc "#### CI Environment variables"
-desc "* **COCOAPODS_TRUNK_TOKEN**: The CocoaPods access token use to push the release to CocoaPods, check below how to retrieve CocoaPods token"
+desc "* __**COCOAPODS_TRUNK_TOKEN**__: The CocoaPods access token use to push the release to CocoaPods, check below how to retrieve CocoaPods token"
 desc "  * **type**: string"
-desc "  * **optional**: true"
+desc "  * **optional**: false"
 desc "#### Output context variables"
-desc "* **DG_COCOAPODS_RELEASE_LINK**: The CocoaPods release link"
+desc "* __**:COCOAPODS_RELEASE_LINK**__: The CocoaPods release link"
 desc "  * **type**: string"
 desc "#### How to retrieve CocoaPods Trunk Token ?"
 desc "First setup your CocoaPods trunk [as follow](https://guides.cocoapods.org/making/getting-setup-with-trunk.html)"
@@ -206,89 +360,104 @@ desc "```\nmachine trunk.cocoapods.org\n  login user@example.com\n  password XXX
 desc "The password `XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX` is your CocoaPods trunk token"
 desc ""
 lane :framework_deploy_cocoapods do |options|
-  if git_branch() != "master"
-    UI.user_error! "Run this lane only on a master branch"
+  master_branch = git_get_master_branch()
+  if git_branch() != master_branch
+    UI.user_error! "Run this lane only on a #{master_branch} branch"
   end
   if ENV["CI"] == true && ENV["COCOAPODS_TRUNK_TOKEN"] == nil
-    UI.user_error! "COCOAPODS_TRUNK_TOKEN not found in the CI environment"
+    UI.user_error! "COCOAPODS_TRUNK_TOKEN not found in the CI environment, this token is required"
   end
   prepare_lane_options(
     options: options,
-    mapping: {
-      :podspec_path => {:env_var => "DG_PODSPEC_PATH"}
-    }
+    bind_params: [
+      Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build()
+    ]
   )
   pod_push(
     path: options[:podspec_path],
     allow_warnings: true,
     verbose: true
   )
-  podspec = read_podspec(
-    path: options[:podspec_path]
-  )
+  podspec = read_podspec(path: options[:podspec_path])
   pod_name = podspec["name"]
-  lane_context[:DG_COCOAPODS_RELEASE_LINK] = "https://cocoapods.org/pods/#{pod_name}"
+  Actions.lane_context[:COCOAPODS_RELEASE_LINK] = "https://cocoapods.org/pods/#{pod_name}"
 end
 
 desc "GitHub deployment lane"
 desc "This lane must be run only on the **master** branch"
+desc "#### How to install ?"
+desc "This lane require actions define in [Digipolitan/fastlane-common](https://github.com/Digipolitan/fastlane-common)"
+desc "```\nimport_from_git(\n  url: 'https://github.com/Digipolitan/fastlane-common'\n)\n```"
 desc "#### Options"
-desc "* **token**: The GitHub access token use to push the release to GitHub, check how to generate access token [here](https://help.github.com/articles/creating-an-access-token-for-command-line-use/)"
+desc "* __**github_token**__: The GitHub access token use to push the release to GitHub, check how to generate access token [here](https://help.github.com/articles/creating-an-access-token-for-command-line-use/)"
 desc "  * **environment_variable**: GITHUB_TOKEN"
 desc "  * **type**: string"
 desc "  * **optional**: false"
-desc "* **repository_name**: The GitHub repository name such as 'company/project'"
+desc "* __**github_repository_name**__: The GitHub repository name such as 'company/project'"
 desc "  * **environment_variable**: GITHUB_REPOSITORY_NAME"
 desc "  * **type**: string"
 desc "  * **optional**: false"
-desc "* **project**: Your xcodeproj path"
-desc "  * **environment_variable**: DG_PROJECT"
+desc "* __**xcodeproj**__: Your xcodeproj path"
+desc "  * **environment_variable**: XCODEPROJ"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "* **skip_carthage**: Skip the carthage asset to the GitHub release"
+desc "* __**skip_carthage**__: Skip the carthage asset to the GitHub release"
+desc "  * **environment_variable**: SKIP_CARTHAGE"
 desc "  * **type**: boolean"
-desc "  * **optional**: true"
 desc "  * **default_value**: false"
+desc "* __**skip_codecov**__: Skip the codecov.io link"
+desc "  * **environment_variable**: SKIP_CODECOV"
+desc "  * **type**: boolean"
+desc "  * **default_value**: false"
+desc ""
 lane :framework_deploy_github do |options|
-  if git_branch() != "master"
-    UI.user_error! "Run this lane only on a master branch"
+  master_branch = git_get_master_branch()
+  if git_branch() != master_branch
+    UI.user_error! "Run this lane only on a #{master_branch} branch"
   end
   prepare_lane_options(
     options: options,
-    mapping: {
-      :token => {:env_var => "GITHUB_TOKEN"},
-      :repository_name => {:env_var => "GITHUB_REPOSITORY_NAME"},
-      :project => {:env_var => "DG_PROJECT"}
-    },
-    required_keys: [
-      :token,
-      :repository_name
+    bind_params: [
+      Actions::BindParamBuilder.new(:github_token).env_var("GITHUB_TOKEN").required().build(),
+      Actions::BindParamBuilder.new(:github_repository_name).env_var("GITHUB_REPOSITORY_NAME").required().build(),
+      Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
+      Actions::BindParamBuilder.new(:skip_carthage).env_var("SKIP_CARTHAGE").default_value(false).build(),
+      Actions::BindParamBuilder.new(:skip_codecov).env_var("SKIP_CODECOV").default_value(false).build()
     ]
   )
-  version_number = get_version_number(xcodeproj: options[:project])
-  tag_name = "v#{version_number}"
-  github_assets = []
-  if options[:skip_carthage] != true
-    if files = files_matching(pattern: "*.framework.zip", basename: false)
-      files.each { |f|
-        github_assets.push(f)
-      }
+  version_number = get_version_number(xcodeproj: options[:xcodeproj])
+  if tag = last_git_tag()
+    if tag.include?(version_number)
+      github_assets = []
+      if options[:skip_carthage] != true
+        if files = files_matching(pattern: "*.framework.zip", basename: false)
+          files.each { |f|
+            github_assets.push(f)
+          }
+        else
+          UI.message "No carthage framework found you must build using 'carthage' action or skip_carthage"
+        end
+      end
+      changelog = get_changelog()
+      if changelog == nil
+        changelog = changelog_from_git_commits()
+      end
+      set_github_release(
+        repository_name: options[:github_repository_name],
+        name: version_number,
+        api_token: options[:github_token],
+        tag_name: tag,
+        description: changelog,
+        commitish: master_branch,
+        upload_assets: github_assets
+      )
     else
-      UI.message "No carthage framework found you must build using 'carthage' action"
+      UI.user_error! "The tag '#{tag}' mismatch with the framework version '#{version_number}'"
     end
+  else
+    UI.user_error! "Cannot retrieve the last git tag, check your repository settings"
   end
-  changelog = get_changelog()
-  if changelog == nil
-    changelog = changelog_from_git_commits()
+  if options[:skip_codecov] != true
+    Actions.sh("curl -s https://codecov.io/bash | bash")
   end
-  set_github_release(
-    repository_name: options[:repository_name],
-    name: version_number,
-    api_token: options[:token],
-    tag_name: tag_name,
-    description: changelog,
-    commitish: "master",
-    upload_assets: github_assets
-  )
-  Actions.sh("curl -s https://codecov.io/bash | bash")
 end
