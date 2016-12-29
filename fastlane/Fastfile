@@ -309,13 +309,6 @@ lane :publish_framework_release do |options|
       Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").default_value(false).build()
     ]
   )
-  if options[:skip_cocoapods] != true
-    podspec_lint(
-      path: options[:podspec_path],
-      allow_warnings: true,
-      verbose: true
-    )
-  end
   version_number = get_version_number(xcodeproj: options[:xcodeproj])
   if changelog = get_changelog()
     UI.message "Check your change log content below :\n#{changelog}"
@@ -331,6 +324,13 @@ lane :publish_framework_release do |options|
     name: version_number,
     message: options[:git_flow_release_message] != nil ? options[:git_flow_release_message] : "Release version #{version_number}"
   )
+  if options[:skip_cocoapods] != true
+    podspec_lint(
+      path: options[:podspec_path],
+      allow_warnings: true,
+      verbose: true
+    )
+  end
   UI.success "Successfully submitted framework v#{version_number} to your repository"
 end
 
