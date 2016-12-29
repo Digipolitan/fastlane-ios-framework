@@ -23,7 +23,6 @@ module Fastlane
         end
 
         Actions.sh(cmd.join(" "))
-        UI.success("Successfully lint Podspec")
       end
 
       #####################################################

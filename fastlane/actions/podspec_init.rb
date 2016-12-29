@@ -45,7 +45,7 @@ module Fastlane
         end
         data += "s.requires_arc = true\n"
         data += "end"
-        File.open(podspec, "w") { |file|
+        File.open(podspec_path, "w") { |file|
           file.puts(data)
         }
       end
