@@ -270,6 +270,10 @@ desc "* __**xcodeproj**__: The Xcode project path."
 desc "  * **environment_variable**: XCODEPROJ"
 desc "  * **type**: string"
 desc "  * **optional**: true"
+desc "* __**test_scheme**__: The scheme into the Xcode project to execute"
+desc "  * **environment_variable**: TEST_SCHEME"
+desc "  * **type**: string"
+desc "  * **optional**: true"
 desc ""
 lane :publish_framework_release do |options|
   ensure_git_status_clean()
@@ -277,12 +281,13 @@ lane :publish_framework_release do |options|
   prepare_lane_options(
     options: options,
     bind_params: [
+      Actions::BindParamBuilder.new(:test_scheme).env_var("TEST_SCHEME").build(),
       Actions::BindParamBuilder.new(:xcworkspace).env_var("XCWORKSPACE").build(),
       Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
       Actions::BindParamBuilder.new(:git_flow_release_message).env_var("GIT_FLOW_RELEASE_MESSAGE").build()
     ]
   )
-  version_number = get_version_number(xcodeproj: options[:project])
+  version_number = get_version_number(xcodeproj: options[:xcodeproj])
   if changelog = get_changelog()
     UI.message "Check your change log content below :\n#{changelog}"
     if !UI.confirm("Are you sure to submit the framework v#{version_number} with this changelog ?")
@@ -291,11 +296,7 @@ lane :publish_framework_release do |options|
   elsif !UI.confirm("Missing changelog content ! Continue ?")
     UI.user_error! "User abort framework release"
   end
-  scan(
-    workspace: options[:xcworkspace],
-    project: options[:xcodeproj],
-    skip_slack:true
-  )
+  run_tests(options)
   git_flow_release(
     action: "finish",
     name: version_number,
@@ -372,9 +373,11 @@ desc "  * **environment_variable**: XCODEPROJ"
 desc "  * **type**: string"
 desc "  * **optional**: true"
 desc "* __**skip_carthage**__: Skip the carthage asset to the GitHub release"
+desc "  * **environment_variable**: SKIP_CARTHAGE"
 desc "  * **type**: boolean"
 desc "  * **default_value**: false"
 desc "* __**skip_codecov**__: Skip the codecov.io link"
+desc "  * **environment_variable**: SKIP_CODECOV"
 desc "  * **type**: boolean"
 desc "  * **default_value**: false"
 desc ""
@@ -389,8 +392,8 @@ lane :framework_deploy_github do |options|
       Actions::BindParamBuilder.new(:github_token).env_var("GITHUB_TOKEN").required().build(),
       Actions::BindParamBuilder.new(:github_repository_name).env_var("GITHUB_REPOSITORY_NAME").required().build(),
       Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
-      Actions::BindParamBuilder.new(:skip_carthage).default_value(false).build(),
-      Actions::BindParamBuilder.new(:skip_codecov).default_value(false).build()
+      Actions::BindParamBuilder.new(:skip_carthage).env_var("SKIP_CARTHAGE").default_value(false).build(),
+      Actions::BindParamBuilder.new(:skip_codecov).env_var("SKIP_CODECOV").default_value(false).build()
     ]
   )
   version_number = get_version_number(xcodeproj: options[:xcodeproj])
