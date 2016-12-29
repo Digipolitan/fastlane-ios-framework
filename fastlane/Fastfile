@@ -7,34 +7,27 @@ desc "* __**xcodeproj**__: The Xcode project path, if the project isn't in your 
 desc "  * **environment_variable**: XCODEPROJ"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "* __**target_version**__: Change to a specific version."
-desc "  * **environment_variable**: TARGET_VERSION"
+desc "* __**xcworkspace**__: The Xcode workspace path, if the workspace isn't in your root directory"
+desc "  * **environment_variable**: XCWORKSPACE"
 desc "  * **type**: string"
 desc "  * **optional**: true"
 desc "* __**podspec_path**__: The podspec path if specific"
 desc "  * **environment_variable**: PODSPEC_PATH"
 desc "  * **type**: string"
 desc "  * **optional**: true"
-desc "* __**product_name**__: The framework name, by default retrieve the product name on the .git/config file"
-desc "  * **environment_variable**: PRODUCT_NAME"
+desc "* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods"
+desc "  * **environment_variable**: SKIP_COCOAPODS"
 desc "  * **type**: string"
-desc "  * **optional**: true"
-desc "* __**changelog_release_url**__: The release url use by the changelog"
-desc "  * **environment_variable**: CHANGELOG_RELEASE_URL"
-desc "  * **type**: string"
-desc "  * **optional**: true"
-desc "* __**changelog_content**__: The changelog content, by default retrieves commits"
-desc "  * **environment_variable**: CHANGELOG_CONTENT"
-desc "  * **type**: string"
-desc "  * **optional**: true"
+desc "  * **default_value**: false"
 desc ""
-lane :bootstrap do |options|
+lane :framework_bootstrap do |options|
   prepare_lane_options(
     options: options,
     bind_params: [
       Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
       Actions::BindParamBuilder.new(:xcworkspace).env_var("XCWORKSPACE").build(),
-      Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build()
+      Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build(),
+      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").default_value(false).build()
     ]
   )
   appfile_init(
@@ -56,57 +49,10 @@ lane :bootstrap do |options|
   if UI.confirm("Would you like to edit the project's configuration ?")
     project_info = get_project_info(xcodeproj: options[:xcodeproj])
     if framework_name = project_info[:name]
-      podspec_info = {}
-      if remote_info = git_get_remote_info()
-        podspec_info[:host] = remote_info[:host]
-        if path = remote_info[:path]
-          podspec_info[:homepage] = "https://#{podspec_info[:host]}/#{path}"
-          podspec_info[:git_url] = "#{podspec_info[:homepage]}.git"
-          if i = path.index('/')
-            podspec_info[:company] = path[0, i]
-            i += 1
-            podspec_info[:identifier] = path[i, path.length - i]
-          end
-        end
-      end
-      user_validation(
-        bind_params: [
-          Actions::BindParamBuilder.new("Git URL").lane_context(:PODSPEC_GIT_URL).default_value(podspec_info[:git_url]).required().build(),
-          Actions::BindParamBuilder.new("Homepage").lane_context(:PODSPEC_HOMEPAGE).default_value(podspec_info[:homepage]).build(),
-          Actions::BindParamBuilder.new("Company").lane_context(:PODSPEC_COMPANY).default_value(podspec_info[:company]).build(),
-          Actions::BindParamBuilder.new("Project identifier").lane_context(:PODSPEC_IDENTIFIER).default_value(podspec_info[:identifier]).required().build()
-        ]
-      )
       ios_deployment_target = UI.confirm("Is your framework compatible iOS ?") ? '8.0' : nil
       watchos_deployment_target = UI.confirm("Is your framework compatible wathOS ?") ? '2.0' : nil
       tvos_deployment_target = UI.confirm("Is your framework compatible tvOS ?") ? '9.0' : nil
       osx_deployment_target = UI.confirm("Is your framework compatible OSX ?") ? '10.9' : nil
-      authors = []
-      if company = Actions.lane_context[:PODSPEC_COMPANY]
-        authors.push(company)
-      end
-      podspec_init(
-        podspec_path: options[:podspec_path],
-        pod_name: framework_name,
-        version: get_version_number(
-          xcodeproj: project_info[:xcodeproj]
-        ),
-        summary: "This is a summary.",
-        homepage: Actions.lane_context[:PODSPEC_HOMEPAGE],
-        git_url: Actions.lane_context[:PODSPEC_GIT_URL],
-        authors: authors,
-        ios_deployment_target: ios_deployment_target,
-        osx_deployment_target: osx_deployment_target,
-        tvos_deployment_target: tvos_deployment_target,
-        watchos_deployment_target: watchos_deployment_target
-      )
-      podfile_init(
-        xcodeproj: project_info[:xcodeproj],
-        ios_deployment_target: ios_deployment_target,
-        osx_deployment_target: osx_deployment_target,
-        tvos_deployment_target: tvos_deployment_target,
-        watchos_deployment_target: watchos_deployment_target
-      )
       clean_xcodeproj_configuration(
         xcodeproj: project_info[:xcodeproj],
         ios_available: ios_deployment_target != nil,
@@ -121,6 +67,65 @@ lane :bootstrap do |options|
         tvos_available: tvos_deployment_target != nil,
         osx_available: osx_deployment_target != nil
       )
+      podfile_init(
+        xcodeproj: project_info[:xcodeproj],
+        ios_deployment_target: ios_deployment_target,
+        osx_deployment_target: osx_deployment_target,
+        tvos_deployment_target: tvos_deployment_target,
+        watchos_deployment_target: watchos_deployment_target
+      )
+      if (options[:skip_cocoapods] != true) and UI.confirm("Would you like to prepare the framework to CocoaPods ?")
+        podspec_info = {}
+        if remote_info = git_get_remote_info()
+          podspec_info[:host] = remote_info[:host]
+          if path = remote_info[:path]
+            podspec_info[:homepage] = "https://#{podspec_info[:host]}/#{path}"
+            podspec_info[:git_url] = "#{podspec_info[:homepage]}.git"
+            if i = path.index('/')
+              podspec_info[:company] = path[0, i]
+              i += 1
+              podspec_info[:identifier] = path[i, path.length - i]
+            end
+          end
+        end
+        user_validation(
+          bind_params: [
+            Actions::BindParamBuilder.new("Git URL").lane_context(:PODSPEC_GIT_URL).default_value(podspec_info[:git_url]).required().build(),
+            Actions::BindParamBuilder.new("Homepage").lane_context(:PODSPEC_HOMEPAGE).default_value(podspec_info[:homepage]).build(),
+            Actions::BindParamBuilder.new("Company").lane_context(:PODSPEC_COMPANY).default_value(podspec_info[:company]).build(),
+            Actions::BindParamBuilder.new("Project identifier").lane_context(:PODSPEC_IDENTIFIER).default_value(podspec_info[:identifier]).required().build()
+          ]
+        )
+        authors = []
+        if company = Actions.lane_context[:PODSPEC_COMPANY]
+          authors.push(company)
+        end
+        podspec_init(
+          path: options[:podspec_path],
+          pod_name: framework_name,
+          version: get_version_number(
+            xcodeproj: project_info[:xcodeproj]
+          ),
+          summary: "This is a summary.",
+          homepage: Actions.lane_context[:PODSPEC_HOMEPAGE],
+          git_url: Actions.lane_context[:PODSPEC_GIT_URL],
+          authors: authors,
+          ios_deployment_target: ios_deployment_target,
+          osx_deployment_target: osx_deployment_target,
+          tvos_deployment_target: tvos_deployment_target,
+          watchos_deployment_target: watchos_deployment_target
+        )
+      else
+        podspec_path = options[:podspec_path]
+        if podspec_path == nil
+          if files = files_matching(pattern: "*.podspec")
+            podspec_path = files.first
+          end
+        end
+        if podspec_path != nil
+          File.delete(podspec_path)
+        end
+      end
     else
       UI.user_error! "No project found, you must pass a valid xcodeproj path"
     end
@@ -149,6 +154,10 @@ desc "* __**podspec_path**__: The podspec path if specific"
 desc "  * **environment_variable**: PODSPEC_PATH"
 desc "  * **type**: string"
 desc "  * **optional**: true"
+desc "* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods"
+desc "  * **environment_variable**: SKIP_COCOAPODS"
+desc "  * **type**: string"
+desc "  * **default_value**: false"
 desc "* __**product_name**__: The framework name, by default retrieve the product name on the .git/config file"
 desc "  * **environment_variable**: PRODUCT_NAME"
 desc "  * **type**: string"
@@ -173,7 +182,8 @@ lane :start_framework_release do |options|
       Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build(),
       Actions::BindParamBuilder.new(:product_name).env_var("PRODUCT_NAME").build(),
       Actions::BindParamBuilder.new(:changelog_release_url).env_var("CHANGELOG_RELEASE_URL").build(),
-      Actions::BindParamBuilder.new(:changelog_content).env_var("CHANGELOG_CONTENT").build()
+      Actions::BindParamBuilder.new(:changelog_content).env_var("CHANGELOG_CONTENT").build(),
+      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").default_value(false).build()
     ]
   )
   develop_branch = git_get_develop_branch()
@@ -208,10 +218,12 @@ lane :start_framework_release do |options|
       xcodeproj: options[:xcodeproj],
       build_number: next_build_number
     )
-    version_bump_podspec(
-      path: options[:podspec_path],
-      version_number: next_version_number
-    )
+    if options[:skip_cocoapods] != true
+      version_bump_podspec(
+        path: options[:podspec_path],
+        version_number: next_version_number
+      )
+    end
     git_commit(
       path: ["."],
       message: "Bumped release version '#{next_version_number}' build ##{next_build_number}"
@@ -274,6 +286,14 @@ desc "* __**test_scheme**__: The scheme into the Xcode project to execute"
 desc "  * **environment_variable**: TEST_SCHEME"
 desc "  * **type**: string"
 desc "  * **optional**: true"
+desc "* __**podspec_path**__: The podspec path if specific"
+desc "  * **environment_variable**: PODSPEC_PATH"
+desc "  * **type**: string"
+desc "  * **optional**: true"
+desc "* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods"
+desc "  * **environment_variable**: SKIP_COCOAPODS"
+desc "  * **type**: string"
+desc "  * **default_value**: false"
 desc ""
 lane :publish_framework_release do |options|
   ensure_git_status_clean()
@@ -284,9 +304,18 @@ lane :publish_framework_release do |options|
       Actions::BindParamBuilder.new(:test_scheme).env_var("TEST_SCHEME").build(),
       Actions::BindParamBuilder.new(:xcworkspace).env_var("XCWORKSPACE").build(),
       Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
-      Actions::BindParamBuilder.new(:git_flow_release_message).env_var("GIT_FLOW_RELEASE_MESSAGE").build()
+      Actions::BindParamBuilder.new(:git_flow_release_message).env_var("GIT_FLOW_RELEASE_MESSAGE").build(),
+      Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build(),
+      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").default_value(false).build()
     ]
   )
+  if options[:skip_cocoapods] != true
+    podspec_lint(
+      path: options[:podspec_path],
+      allow_warnings: true,
+      verbose: true
+    )
+  end
   version_number = get_version_number(xcodeproj: options[:xcodeproj])
   if changelog = get_changelog()
     UI.message "Check your change log content below :\n#{changelog}"
@@ -336,7 +365,7 @@ lane :framework_deploy_cocoapods do |options|
     UI.user_error! "Run this lane only on a #{master_branch} branch"
   end
   if ENV["CI"] == true && ENV["COCOAPODS_TRUNK_TOKEN"] == nil
-    UI.user_error! "COCOAPODS_TRUNK_TOKEN not found in the CI environment"
+    UI.user_error! "COCOAPODS_TRUNK_TOKEN not found in the CI environment, this token is required"
   end
   prepare_lane_options(
     options: options,

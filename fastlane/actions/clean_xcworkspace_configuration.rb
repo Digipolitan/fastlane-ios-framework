@@ -68,22 +68,26 @@ module Fastlane
       def self.available_options
         [
           FastlaneCore::ConfigItem.new(key: :xcworkspace,
+                                       description: "The Xcode workspace path",
                                        env_name: "XCWORKSPACE",
-                                       optional: true,
-                                       description: "The workspace path"),
+                                       optional: true),
           FastlaneCore::ConfigItem.new(key: :ios_available,
+                                       description: "iOS available if true, otherwise unavailable",
                                        env_name: "FRAMEWORK_IOS_AVAILABLE",
                                        is_string: false,
                                        default_value: true),
           FastlaneCore::ConfigItem.new(key: :watchos_available,
+                                       description: "watchOS available if true, otherwise unavailable",
                                        env_name: "FRAMEWORK_WATCHOS_AVAILABLE",
                                        is_string: false,
                                        default_value: true),
           FastlaneCore::ConfigItem.new(key: :tvos_available,
-                                      env_name: "FRAMEWORK_TVOS_AVAILABLE",
-                                      is_string: false,
-                                      default_value: true),
+                                       description: "tvOS available if true, otherwise unavailable",
+                                       env_name: "FRAMEWORK_TVOS_AVAILABLE",
+                                       is_string: false,
+                                       default_value: true),
           FastlaneCore::ConfigItem.new(key: :osx_available,
+                                       description: "OSX available if true, otherwise unavailable",
                                        env_name: "FRAMEWORK_OSX_AVAILABLE",
                                        is_string: false,
                                        default_value: true)
@@ -96,6 +100,10 @@ module Fastlane
 
       def self.is_supported?(platform)
         [:ios, :mac].include?(platform)
+      end
+
+      def self.category
+        :project
       end
     end
   end

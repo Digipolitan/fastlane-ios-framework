@@ -5,7 +5,7 @@ module Fastlane
 
     class PodspecInitAction < Action
       def self.run(params)
-        podspec_path = params[:podspec_path]
+        podspec_path = params[:path]
         if podspec_path == nil
           if (podspec = Dir["*.podspec"]) != nil && podspec.length > 0
             podspec_path = podspec.first
@@ -23,16 +23,8 @@ module Fastlane
           data += "s.homepage = \"#{homepage}\"\n"
         end
         if authors = params[:authors]
-          authors_field = ""
-          i = 0
-          while i < authors.length do
-            if i > 0
-              authors_field += ", "
-            end
-            authors_field += authors[i]
-            i += 1
-          end
-          if i > 0
+          if authors.length > 0
+            authors_field = authors.join(", ")
             data += "s.authors = \"#{authors_field}\"\n"
           end
         end
@@ -68,41 +60,54 @@ module Fastlane
 
       def self.available_options
         [
-          FastlaneCore::ConfigItem.new(key: :podspec_path,
+          FastlaneCore::ConfigItem.new(key: :path,
+                                       description: "The podspec path",
                                        env_name: "PODSPEC_PATH",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :pod_name,
+                                       description: "The name of the framework of CocoaPods",
                                        env_name: "POD_NAME"),
           FastlaneCore::ConfigItem.new(key: :version,
+                                       description: "The framework version",
                                        env_name: "PODSPEC_VERSION"),
           FastlaneCore::ConfigItem.new(key: :summary,
+                                       description: "Short description on CocoaPods",
                                        env_name: "POD_SUMMARY",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :authors,
+                                       description: "Array of authors",
                                        env_name: "POD_AUTHORS",
                                        optional: true,
                                        is_string: false),
           FastlaneCore::ConfigItem.new(key: :homepage,
+                                       description: "The homepage description of your framework",
                                        env_name: "POD_HOMEPAGE",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :git_url,
+                                       description: "The source git URL of the framework",
                                        env_name: "POD_GIT_URL"),
           FastlaneCore::ConfigItem.new(key: :tag_prefix,
-                                      env_name: "POD_TAG_PREFIX",
-                                      default_value: "v"),
+                                       description: "The tag prefix for versioning",
+                                       env_name: "POD_TAG_PREFIX",
+                                       default_value: "v"),
           FastlaneCore::ConfigItem.new(key: :license,
+                                       description: "License type",
                                        env_name: "POD_LICENSE",
                                        default_value: "BSD"),
           FastlaneCore::ConfigItem.new(key: :ios_deployment_target,
+                                       description: "Minimum iOS deployment target",
                                        env_name: "POD_IOS_DEPLOYMENT_TARGET",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :osx_deployment_target,
+                                       description: "Minimum OSX deployment target",
                                        env_name: "POD_OSX_DEPLOYMENT_TARGET",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :tvos_deployment_target,
+                                       description: "Minimum tvOS deployment target",
                                        env_name: "POD_TVOS_DEPLOYMENT_TARGET",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :watchos_deployment_target,
+                                       description: "Minimum watchOS deployment target",
                                        env_name: "POD_WATCHOS_DEPLOYMENT_TARGET",
                                        optional: true)
         ]
@@ -114,6 +119,10 @@ module Fastlane
 
       def self.is_supported?(platform)
         [:ios, :mac].include?(platform)
+      end
+
+      def self.category
+        :misc
       end
     end
   end

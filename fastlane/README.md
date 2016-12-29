@@ -5,9 +5,9 @@ fastlane documentation
 sudo gem install fastlane
 ```
 # Available Actions
-### bootstrap
+### framework_bootstrap
 ```
-fastlane bootstrap
+fastlane framework_bootstrap
 ```
 Initialize the framework to be use with fastlane
 
@@ -34,9 +34,9 @@ import_from_git(
 
   * **optional**: true
 
-* __**target_version**__: Change to a specific version.
+* __**xcworkspace**__: The Xcode workspace path, if the workspace isn't in your root directory
 
-  * **environment_variable**: TARGET_VERSION
+  * **environment_variable**: XCWORKSPACE
 
   * **type**: string
 
@@ -50,29 +50,13 @@ import_from_git(
 
   * **optional**: true
 
-* __**product_name**__: The framework name, by default retrieve the product name on the .git/config file
+* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods
 
-  * **environment_variable**: PRODUCT_NAME
-
-  * **type**: string
-
-  * **optional**: true
-
-* __**changelog_release_url**__: The release url use by the changelog
-
-  * **environment_variable**: CHANGELOG_RELEASE_URL
+  * **environment_variable**: SKIP_COCOAPODS
 
   * **type**: string
 
-  * **optional**: true
-
-* __**changelog_content**__: The changelog content, by default retrieves commits
-
-  * **environment_variable**: CHANGELOG_CONTENT
-
-  * **type**: string
-
-  * **optional**: true
+  * **default_value**: false
 
 
 ### start_framework_release
@@ -126,6 +110,14 @@ fastlane start_framework_release target_version:4.0.9
   * **type**: string
 
   * **optional**: true
+
+* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods
+
+  * **environment_variable**: SKIP_COCOAPODS
+
+  * **type**: string
+
+  * **default_value**: false
 
 * __**product_name**__: The framework name, by default retrieve the product name on the .git/config file
 
@@ -199,6 +191,30 @@ import_from_git(
   * **type**: string
 
   * **optional**: true
+
+* __**test_scheme**__: The scheme into the Xcode project to execute
+
+  * **environment_variable**: TEST_SCHEME
+
+  * **type**: string
+
+  * **optional**: true
+
+* __**podspec_path**__: The podspec path if specific
+
+  * **environment_variable**: PODSPEC_PATH
+
+  * **type**: string
+
+  * **optional**: true
+
+* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods
+
+  * **environment_variable**: SKIP_COCOAPODS
+
+  * **type**: string
+
+  * **default_value**: false
 
 
 ### framework_deploy_cocoapods
@@ -310,11 +326,15 @@ import_from_git(
 
 * __**skip_carthage**__: Skip the carthage asset to the GitHub release
 
+  * **environment_variable**: SKIP_CARTHAGE
+
   * **type**: boolean
 
   * **default_value**: false
 
 * __**skip_codecov**__: Skip the codecov.io link
+
+  * **environment_variable**: SKIP_CODECOV
 
   * **type**: boolean
 

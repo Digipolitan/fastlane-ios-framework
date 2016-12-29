@@ -134,6 +134,7 @@ module Fastlane
       def self.available_options
         [
           FastlaneCore::ConfigItem.new(key: :xcodeproj,
+                                       description: "The Xcode project path",
                                        env_name: "XCODEPROJ",
                                        optional: false,
                                        verify_block: proc do |value|
@@ -141,15 +142,19 @@ module Fastlane
                                          UI.user_error!("Could not find Xcode project") if !File.exist?(value) and !Helper.is_test?
                                        end),
           FastlaneCore::ConfigItem.new(key: :ios_deployment_target,
+                                       description: "Minimum iOS deployment target",
                                        env_name: "POD_IOS_DEPLOYMENT_TARGET",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :osx_deployment_target,
+                                       description: "Minimum OSX deployment target",
                                        env_name: "POD_OSX_DEPLOYMENT_TARGET",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :tvos_deployment_target,
+                                       description: "Minimum tvOS deployment target",
                                        env_name: "POD_TVOS_DEPLOYMENT_TARGET",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :watchos_deployment_target,
+                                       description: "Minimum watchOS deployment target",
                                        env_name: "POD_WATCHOS_DEPLOYMENT_TARGET",
                                        optional: true)
         ]
@@ -161,6 +166,10 @@ module Fastlane
 
       def self.is_supported?(platform)
         [:ios, :mac].include?(platform)
+      end
+
+      def self.category
+        :misc
       end
     end
   end
