@@ -54,7 +54,7 @@ import_from_git(
 
   * **environment_variable**: SKIP_COCOAPODS
 
-  * **type**: string
+  * **type**: boolean
 
   * **default_value**: false
 
@@ -115,7 +115,7 @@ fastlane start_framework_release target_version:4.0.9
 
   * **environment_variable**: SKIP_COCOAPODS
 
-  * **type**: string
+  * **type**: boolean
 
   * **default_value**: false
 
@@ -212,7 +212,7 @@ import_from_git(
 
   * **environment_variable**: SKIP_COCOAPODS
 
-  * **type**: string
+  * **type**: boolean
 
   * **default_value**: false
 

@@ -17,7 +17,7 @@ desc "  * **type**: string"
 desc "  * **optional**: true"
 desc "* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods"
 desc "  * **environment_variable**: SKIP_COCOAPODS"
-desc "  * **type**: string"
+desc "  * **type**: boolean"
 desc "  * **default_value**: false"
 desc ""
 lane :framework_bootstrap do |options|
@@ -27,14 +27,14 @@ lane :framework_bootstrap do |options|
       Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
       Actions::BindParamBuilder.new(:xcworkspace).env_var("XCWORKSPACE").build(),
       Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build(),
-      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").default_value(false).build()
+      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").transform(BindParamTransform::Boolean).default_value(false).build()
     ]
   )
   appfile_init(
     xcodeproj: options[:xcodeproj],
-    fetch_apple_id: 0,
-    fetch_team_name: 0,
-    fetch_itc_team_name: 0
+    fetch_apple_id: false,
+    fetch_team_name: false,
+    fetch_itc_team_name: false
   )
   if UI.confirm("Would you like to reset the project's version ?")
     increment_version_number(
@@ -156,7 +156,7 @@ desc "  * **type**: string"
 desc "  * **optional**: true"
 desc "* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods"
 desc "  * **environment_variable**: SKIP_COCOAPODS"
-desc "  * **type**: string"
+desc "  * **type**: boolean"
 desc "  * **default_value**: false"
 desc "* __**product_name**__: The framework name, by default retrieve the product name on the .git/config file"
 desc "  * **environment_variable**: PRODUCT_NAME"
@@ -183,7 +183,7 @@ lane :start_framework_release do |options|
       Actions::BindParamBuilder.new(:product_name).env_var("PRODUCT_NAME").build(),
       Actions::BindParamBuilder.new(:changelog_release_url).env_var("CHANGELOG_RELEASE_URL").build(),
       Actions::BindParamBuilder.new(:changelog_content).env_var("CHANGELOG_CONTENT").build(),
-      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").default_value(false).build()
+      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").transform(BindParamTransform::Boolean).default_value(false).build()
     ]
   )
   develop_branch = git_get_develop_branch()
@@ -292,7 +292,7 @@ desc "  * **type**: string"
 desc "  * **optional**: true"
 desc "* __**skip_cocoapods**__: Do not prepare the framework to CocoaPods"
 desc "  * **environment_variable**: SKIP_COCOAPODS"
-desc "  * **type**: string"
+desc "  * **type**: boolean"
 desc "  * **default_value**: false"
 desc ""
 lane :publish_framework_release do |options|
@@ -306,7 +306,7 @@ lane :publish_framework_release do |options|
       Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
       Actions::BindParamBuilder.new(:git_flow_release_message).env_var("GIT_FLOW_RELEASE_MESSAGE").build(),
       Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build(),
-      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").default_value(false).build()
+      Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").transform(BindParamTransform::Boolean).default_value(false).build()
     ]
   )
   version_number = get_version_number(xcodeproj: options[:xcodeproj])
@@ -421,8 +421,8 @@ lane :framework_deploy_github do |options|
       Actions::BindParamBuilder.new(:github_token).env_var("GITHUB_TOKEN").required().build(),
       Actions::BindParamBuilder.new(:github_repository_name).env_var("GITHUB_REPOSITORY_NAME").required().build(),
       Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
-      Actions::BindParamBuilder.new(:skip_carthage).env_var("SKIP_CARTHAGE").default_value(false).build(),
-      Actions::BindParamBuilder.new(:skip_codecov).env_var("SKIP_CODECOV").default_value(false).build()
+      Actions::BindParamBuilder.new(:skip_carthage).env_var("SKIP_CARTHAGE").transform(BindParamTransform::Boolean).default_value(false).build(),
+      Actions::BindParamBuilder.new(:skip_codecov).env_var("SKIP_CODECOV").transform(BindParamTransform::Boolean).default_value(false).build()
     ]
   )
   version_number = get_version_number(xcodeproj: options[:xcodeproj])
