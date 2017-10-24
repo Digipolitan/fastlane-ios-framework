@@ -78,4 +78,4 @@ podspec_init(
   watchos_deployment_target: '2.0'
 )
 ```
-This action will generate the podspec file, with an iOS and watchOS deployment 
+This action will generate the podspec file, with an iOS and watchOS deployment
