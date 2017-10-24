@@ -52,7 +52,7 @@ lane :framework_bootstrap do |options|
       ios_deployment_target = UI.confirm("Is your framework compatible iOS ?") ? '8.0' : nil
       watchos_deployment_target = UI.confirm("Is your framework compatible wathOS ?") ? '2.0' : nil
       tvos_deployment_target = UI.confirm("Is your framework compatible tvOS ?") ? '9.0' : nil
-      osx_deployment_target = UI.confirm("Is your framework compatible OSX ?") ? '10.9' : nil
+      osx_deployment_target = UI.confirm("Is your framework compatible OSX ?") ? '10.10' : nil
       clean_xcodeproj_configuration(
         xcodeproj: project_info[:xcodeproj],
         ios_available: ios_deployment_target != nil,
