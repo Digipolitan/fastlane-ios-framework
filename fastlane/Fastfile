@@ -306,6 +306,7 @@ lane :publish_framework_release do |options|
       Actions::BindParamBuilder.new(:xcodeproj).env_var("XCODEPROJ").build(),
       Actions::BindParamBuilder.new(:git_flow_release_message).env_var("GIT_FLOW_RELEASE_MESSAGE").build(),
       Actions::BindParamBuilder.new(:podspec_path).env_var("PODSPEC_PATH").build(),
+      Actions::BindParamBuilder.new(:skip_tests).env_var("SKIP_TESTS").transform(Actions::BindParamTransform::Boolean).default_value(false).build()
       Actions::BindParamBuilder.new(:skip_cocoapods).env_var("SKIP_COCOAPODS").transform(Actions::BindParamTransform::Boolean).default_value(false).build()
     ]
   )
@@ -318,7 +319,9 @@ lane :publish_framework_release do |options|
   elsif !UI.confirm("Missing changelog content ! Continue ?")
     UI.user_error! "User abort framework release"
   end
-  tests(options)
+  if options[:skip_tests] != true
+    tests(options)
+  end
   git_flow_release(
     action: "finish",
     name: version_number,
@@ -327,8 +330,7 @@ lane :publish_framework_release do |options|
   if options[:skip_cocoapods] != true
     podspec_lint(
       path: options[:podspec_path],
-      allow_warnings: true,
-      verbose: true
+      allow_warnings: true
     )
   end
   UI.success "Successfully submitted framework v#{version_number} to your repository"
