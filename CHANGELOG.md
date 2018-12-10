@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [0.4.1](https://github.com/Digipolitan/fastlane-ios-framework/releases/tag/v0.4.1)
+
+fix Xcode10 & swift 4.2
+
+---
+
 ## [0.3.1](https://github.com/Digipolitan/fastlane-ios-framework/releases/tag/v0.3.1)
 
 edit osx version to 10.10
