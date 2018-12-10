@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 `fastlane-ios-framework` adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.4.1](https://github.com/Digipolitan/fastlane-ios-framework/releases/tag/v0.4.1)
+
+possible to run publish_framework_release without tests
+
 ---
 
 ## [0.4.0](https://github.com/Digipolitan/fastlane-ios-framework/releases/tag/v0.4.0)
